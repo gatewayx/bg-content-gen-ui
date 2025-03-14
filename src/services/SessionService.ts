@@ -18,10 +18,10 @@ const ChatService = {
    * Save a new sessions to chat history
    * @param {ChatProps} sessions - The sessions object
    */
-  setChatSessions: (sessions: ChatProps): void => {
-    const chatHistory = ChatService.getChatSessions();
-    chatHistory.push(sessions);
-    localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(chatHistory));
+  setChatSessions: (sessions: ChatProps[]): void => {
+    // const chatHistory = ChatService.getChatSessions();
+    // chatHistory.push(sessions);
+    localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(sessions));
   },
 
   /**

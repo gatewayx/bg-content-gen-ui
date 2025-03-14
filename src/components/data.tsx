@@ -31,43 +31,7 @@ export const chats: ChatProps[] = [
         content: 'Hello, this is Session 1.',
         timestamp: 'Wednesday 9:00am',
         sender: users[0],
-      },
-      {
-        id: '2',
-        content: 'How are you today?',
-        timestamp: 'Wednesday 9:05am',
-        sender: 'You',
-      },
+      }
     ],
-  },
-  {
-    id: '2',
-    sender: users[1],
-    messages: [
-      {
-        id: '1',
-        content: 'This is Session 2. Let’s discuss our plans.',
-        timestamp: '5 mins ago',
-        sender: users[1],
-      },
-      {
-        id: '2',
-        content: 'Sure! What’s on your mind?',
-        timestamp: 'Just now',
-        sender: 'You',
-      },
-    ],
-  },
-  {
-    id: '3',
-    sender: users[2],
-    messages: [
-      {
-        id: '1',
-        content: 'Session 3 is now active.',
-        timestamp: 'Just now',
-        sender: users[2],
-      },
-    ],
-  },
+  }
 ];
