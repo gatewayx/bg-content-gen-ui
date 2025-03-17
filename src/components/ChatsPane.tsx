@@ -109,6 +109,7 @@ export default function ChatsPane(props: ChatsPaneProps) {
             setSelectedChat={setSelectedChat}
             selectedChatId={selectedChatId}
             handleDeleteSession={handleDeleteSession}
+            isLoading={isLoading}
           />
         ))}
       </List>
