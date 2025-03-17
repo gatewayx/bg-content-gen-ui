@@ -28,7 +28,7 @@ export default function ChatBubble({
   return (
     <Box
       sx={{
-        maxWidth: "60%",
+        maxWidth: "85%",
         minWidth: "auto",
         display: "flex",
         alignItems: "center",
@@ -101,6 +101,7 @@ export default function ChatBubble({
                   color: isSent
                     ? "var(--joy-palette-common-white)"
                     : "var(--joy-palette-text-primary)",
+                    whiteSpace: "pre-wrap"
                 }}
               >
                 {content}
