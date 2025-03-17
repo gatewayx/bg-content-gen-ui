@@ -7,6 +7,7 @@ import List from "@mui/joy/List";
 import EditNoteRoundedIcon from "@mui/icons-material/EditNoteRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import BugReportIcon from '@mui/icons-material/BugReport';
 import ChatListItem from "./ChatListItem";
 import { ChatProps } from "../components/types";
 import { toggleMessagesPane } from "../components/utils";
@@ -16,10 +17,12 @@ type ChatsPaneProps = {
   setSelectedChat: (chat: ChatProps) => void;
   selectedChatId: string;
   handleNewSession:Function;
+  handleDeleteSession:Function;
+  isLoading:boolean;
 };
 
 export default function ChatsPane(props: ChatsPaneProps) {
-  const { chats, setSelectedChat, selectedChatId, handleNewSession } = props;
+  const { chats, setSelectedChat, selectedChatId, handleNewSession,handleDeleteSession, isLoading } = props;
   
 
   return (
@@ -84,14 +87,14 @@ export default function ChatsPane(props: ChatsPaneProps) {
           <CloseRoundedIcon />
         </IconButton>
       </Stack>
-      <Box sx={{ px: 2, pb: 1.5 }}>
+      {/* <Box sx={{ px: 2, pb: 1.5 }}>
         <Input
           size="sm"
           startDecorator={<SearchRoundedIcon />}
           placeholder="Search"
           aria-label="Search"
         />
-      </Box>
+      </Box> */}
       <List
         sx={{
           py: 0,
@@ -105,6 +108,7 @@ export default function ChatsPane(props: ChatsPaneProps) {
             {...chat}
             setSelectedChat={setSelectedChat}
             selectedChatId={selectedChatId}
+            handleDeleteSession={handleDeleteSession}
           />
         ))}
       </List>

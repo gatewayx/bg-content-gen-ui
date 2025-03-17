@@ -7,9 +7,24 @@ import { chats } from "../components/data";
 import ChatService from "../services/SessionService";
 import { logError } from "../services/LoggerService";
 
+
+function getFormattedTime() {
+  const now = new Date();
+  
+  const day = new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(now);
+  const time = now.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+  });
+
+  return `${day} ${time}`;
+}
+
 export default function MyProfile() {
   const [sessions, setSessions] = React.useState<ChatProps[]>([]);
   const [selectedChat, setSelectedChat] = React.useState<ChatProps | null>(null);
+  const [isLoading,setIsLoading] = React.useState(false);
 
   // Load stored sessions on mount
   React.useEffect(() => {
@@ -31,6 +46,7 @@ export default function MyProfile() {
   }, [sessions]);
 
   const handleNewSession = () => {
+
     const timestamp = new Date().toLocaleString("en-US", {
       month: "2-digit",
       day: "2-digit",
@@ -42,7 +58,7 @@ export default function MyProfile() {
     });
 
     const newSession: ChatProps = {
-      id: (sessions.length + 1).toString(),
+      id: performance.now().toString(36).replace('.', ''),
       sender: {
         name: `Session ${sessions.length + 1}`,
         username: timestamp,
@@ -50,17 +66,10 @@ export default function MyProfile() {
         online: false,
       },
       messages: [
-        {
-          id: "1",
-          content: `Session ${sessions.length + 1} is now active.`,
-          timestamp: "Just now",
-          sender: {
-            name: `Session ${sessions.length + 1}`,
-            username: timestamp,
-            avatar: "/static/images/avatar/5.jpg",
-            online: false,
-          },
-        },
+      
+      ],
+      messagesFT: [
+        
       ],
     };
 
@@ -69,12 +78,45 @@ export default function MyProfile() {
   };
 
 
+  const handleDeleteSession = (sessionId: string) => {
+    if (sessions.length === 1) {
+      alert("You cannot delete the last or only remaining session.");
+      return;
+    }
+  
+    // Check if the session exists
+    const sessionExists = sessions.some(session => session.id === sessionId);
+  
+    if (!sessionExists) {
+      alert("Session not found.");
+      return;
+    }
+  
+    // Proceed to delete the session
+    setSessions((prev) => prev.filter(session => session.id !== sessionId));
+    
+    // Optionally, you can also handle the case where the deleted session was the selected chat
+    setSelectedChat(sessions[0]); // Select the first session, or handle this based on your requirements
+  };
+  
+
+
   // Function to handle new message addition from child component
   const handleNewMessage = (newMessage: MessageProps) => {
     setSessions((prevSessions) =>
       prevSessions.map((session) =>
         session.id === selectedChat?.id
           ? { ...session, messages: [...session.messages, newMessage] }
+          : session
+      )
+    );
+  };
+
+  const handleNewFTMessage = (newFTMessage: MessageProps) => {
+    setSessions((prevSessions) =>
+      prevSessions.map((session) =>
+        session.id === selectedChat?.id
+          ? { ...session, messagesFT: [...session.messagesFT, newFTMessage] }
           : session
       )
     );
@@ -113,12 +155,13 @@ export default function MyProfile() {
             selectedChatId={selectedChat.id}
             setSelectedChat={setSelectedChat}
             handleNewSession={handleNewSession}
-            
+            handleDeleteSession={handleDeleteSession}
+            isLoading={isLoading}
           />
         )}
       </Sheet>
 
-      {selectedChat && <MessagesPane handleNewMessage={handleNewMessage} chat={selectedChat} />}
+      {selectedChat && <MessagesPane isLoading={isLoading} setIsLoading={setIsLoading} handleNewMessage={handleNewMessage} chat={selectedChat} handleNewFTMessage={handleNewFTMessage} />}
     </Sheet>
   );
 }

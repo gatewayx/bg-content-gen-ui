@@ -22,5 +22,6 @@ export type UserProps = {
     id: string;
     sender: UserProps;
     messages: MessageProps[];
+    messagesFT: MessageProps[];
   };
   

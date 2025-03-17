@@ -28,8 +28,15 @@ export const chats: ChatProps[] = [
     messages: [
       {
         id: '1',
-        content: 'Hello, this is Session 1.',
-        timestamp: 'Wednesday 9:00am',
+        content: 'Call Transcript → Email Newsletter\n**Step 1**: Paste the call transcript, then **extract key stories**.',
+        timestamp: 'Now',
+        sender: users[0],
+      }
+    ],messagesFT: [
+      {
+        id: '1',
+        content: 'Hello, your fine tuned prompt here !',
+        timestamp: 'Now',
         sender: users[0],
       }
     ],

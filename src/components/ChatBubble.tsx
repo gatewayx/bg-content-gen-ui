@@ -22,7 +22,7 @@ export default function ChatBubble({
   sender = "You",
   is_loading = false,
 }: ChatBubbleProps) {
-  const isSent = sender === "You"; // Determine if it's "You" (sent)
+  const isSent = sender === "You"; // Determine if it's "You" (sent)  
   const [isCopied, setIsCopied] = React.useState(false);
 
   return (

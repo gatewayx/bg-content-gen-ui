@@ -12,6 +12,20 @@ type MessagesPaneProps = {
   chat: ChatProps;
 };
 
+
+function getFormattedTime() {
+  const now = new Date();
+  
+  const day = new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(now);
+  const time = now.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+  });
+
+  return `${day} ${time}`;
+}
+
 export default function MessagesPane(props: MessagesPaneProps) {
   const { chat } = props;
   const [chatMessages, setChatMessages] = React.useState(chat.messages);
@@ -78,7 +92,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
               id: newIdString,
               sender: 'You',
               content: textAreaValue,
-              timestamp: 'Just now',
+              timestamp: getFormattedTime(),
             },
           ]);
         }}
