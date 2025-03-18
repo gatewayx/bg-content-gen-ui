@@ -22,7 +22,7 @@ export default function ChatBubble({
   sender = "You",
   is_loading = false,
 }: ChatBubbleProps) {
-  const isSent = sender === "You"; // Determine if it's "You" (sent)  
+  const isSent = sender === "You";
   const [isCopied, setIsCopied] = React.useState(false);
 
   return (
@@ -31,33 +31,10 @@ export default function ChatBubble({
         maxWidth: "85%",
         minWidth: "auto",
         display: "flex",
-        alignItems: "center",
-        flexDirection: isSent ? "row" : "row-reverse", // Adjust direction based on sender
+        flexDirection: "column",
+        alignItems: isSent ? "flex-end" : "flex-start",
       }}
     >
-      {/* Copy Icon - Left for "You", Right for others */}
-      {content.length > 0 && (
-        <IconButton
-          variant={isCopied ? "soft" : "plain"}
-          color={isCopied ? "success" : "neutral"}
-          size="sm"
-          onClick={() => {
-            try {
-              navigator.clipboard.writeText(content);
-              setIsCopied(true);
-              setTimeout(() => setIsCopied(false), 2000);
-            } catch (err) {
-              console.error("Failed to copy text:", err);
-            }
-          }}
-          sx={{
-            mx: 1, // Margin for spacing
-          }}
-        >
-          {isCopied ? <DoneIcon /> : <ContentCopyIcon />}
-        </IconButton>
-      )}
-
       {/* Message Bubble */}
       <Box sx={{ width: "100%" }}>
         <Stack
@@ -101,7 +78,7 @@ export default function ChatBubble({
                   color: isSent
                     ? "var(--joy-palette-common-white)"
                     : "var(--joy-palette-text-primary)",
-                    whiteSpace: "pre-wrap"
+                  whiteSpace: "pre-wrap",
                 }}
               >
                 {content}
@@ -110,6 +87,27 @@ export default function ChatBubble({
           </Sheet>
         </Box>
       </Box>
+
+      {/* Copy Icon Below Chat Bubble */}
+      {content.length > 0 && (
+        <IconButton
+          variant={isCopied ? "soft" : "plain"}
+          color={isCopied ? "success" : "neutral"}
+          size="sm"
+          onClick={() => {
+            try {
+              navigator.clipboard.writeText(content);
+              setIsCopied(true);
+              setTimeout(() => setIsCopied(false), 2000);
+            } catch (err) {
+              console.error("Failed to copy text:", err);
+            }
+          }}
+          sx={{ mt: 1 }}
+        >
+          {isCopied ? <DoneIcon /> : <ContentCopyIcon />}
+        </IconButton>
+      )}
     </Box>
   );
 }
