@@ -5,11 +5,12 @@ import Stack from "@mui/joy/Stack";
 import AvatarWithStatus from "./AvatarWithStatus";
 import ChatBubble from "./ChatBubble";
 import MessageInput from "./MessageInput";
-import MessagesPaneHeader from "./MessagesPaneHeader";
 import { ChatProps, MessageProps } from "../components/types";
 import { OpenAI } from "openai";
 import Typography from "@mui/joy/Typography";
 import { logError } from "../services/LoggerService";
+import { WRITE_AI_SYSTEM_PROMPT } from "../constants";
+
 
 type MessagesPaneProps = {
   chat: ChatProps;
@@ -100,8 +101,6 @@ export default function MessagesPane(props: MessagesPaneProps) {
         { maxRetries: 5 }
       );
 
-      console.log("\nAI Response:\n");
-
       let fullMessage = ""; // Store the full AI response
 
       let newId = chatMessages.length + 1;
@@ -139,13 +138,10 @@ export default function MessagesPane(props: MessagesPaneProps) {
             return updatedMessages;
           });
           fullMessage += content;
-          console.log("GPT Response", content); // Print response in real-time
         }
       }
 
       // 🛑 Full AI Response after loop ends
-      console.log("Complete GPT Response:", fullMessage);
-
       handleNewMessage({
         id: newId.toString(),
         sender: {
@@ -207,15 +203,13 @@ export default function MessagesPane(props: MessagesPaneProps) {
 
       const response = await client.chat.completions.create(
         {
-          messages: [{ role: "user", content: emptyTextAreaValue }],
+          messages: [{ role: "system", content: WRITE_AI_SYSTEM_PROMPT },{ role: "user", content: emptyTextAreaValue }],
           model:
             "ft:gpt-4o-2024-08-06:gateway-x:jp-linkedin-top-30-likes-2025-03-10:B9jJFWXa",
           stream: true,
         },
         { maxRetries: 5 }
       );
-
-      console.log("\nAI Response:\n");
 
       let fullMessage = "";
 
@@ -249,7 +243,6 @@ export default function MessagesPane(props: MessagesPaneProps) {
           });
 
           fullMessage += content;
-          console.log("GPT Response", content);
         }
       }
 
@@ -266,7 +259,6 @@ export default function MessagesPane(props: MessagesPaneProps) {
       });
       setIsLoading(false);
 
-      console.log("Complete GPT Response:", fullMessage);
     } catch (error) {
       alert("Error fetching AI response:");
       logError(error);
