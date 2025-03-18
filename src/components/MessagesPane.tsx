@@ -10,7 +10,7 @@ import { OpenAI } from "openai";
 import Typography from "@mui/joy/Typography";
 import { logError } from "../services/LoggerService";
 import { WRITE_AI_SYSTEM_PROMPT } from "../constants";
-
+import { ChatCompletionMessageParam } from "openai";
 
 type MessagesPaneProps = {
   chat: ChatProps;
@@ -59,6 +59,25 @@ export default function MessagesPane(props: MessagesPaneProps) {
   const handleCompletion = async (model = "o1") => {
     try {
       setIsLoading(true);
+
+
+      const messages: ChatCompletionMessageParam[] = []; // This should persist across interactions
+      // Add system message only once
+      // messages.push({ role: "system", content: WRITE_AI_SYSTEM_PROMPT });
+
+      chatMessages.forEach(message => {
+        if (message.sender == 'You') {
+          messages.push({ role: "user", content: message.content });
+        } else {
+          messages.push({ role: "assistant", content: message.content });
+        }
+      });
+
+
+      // Add the new user message
+      messages.push({ role: "user", content: textAreaValue });
+
+
       setChatMessages([
         ...chatMessages,
         {
@@ -94,7 +113,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
 
       const response = await client.chat.completions.create(
         {
-          messages: [{ role: "user", content: textAreaValue }],
+          messages: messages,
           model: model,
           stream: true,
         },
@@ -201,9 +220,26 @@ export default function MessagesPane(props: MessagesPaneProps) {
         dangerouslyAllowBrowser: true,
       });
 
+      const messages: ChatCompletionMessageParam[] = []; // This should persist across interactions
+      // Add system message only once
+      messages.push({ role: "system", content: WRITE_AI_SYSTEM_PROMPT });
+
+      ftChatMessages.forEach(message => {
+        if (message.sender == 'You') {
+          messages.push({ role: "user", content: message.content });
+        } else {
+          messages.push({ role: "assistant", content: message.content });
+        }
+      });
+
+
+      // Add the new user message
+      messages.push({ role: "user", content: emptyTextAreaValue });
+      
+
       const response = await client.chat.completions.create(
         {
-          messages: [{ role: "system", content: WRITE_AI_SYSTEM_PROMPT },{ role: "user", content: emptyTextAreaValue }],
+          messages: messages,
           model:
             "ft:gpt-4o-2024-08-06:gateway-x:jp-linkedin-top-30-likes-2025-03-10:B9jJFWXa",
           stream: true,
