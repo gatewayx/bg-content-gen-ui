@@ -10,8 +10,7 @@ import { OpenAI } from "openai";
 import Typography from "@mui/joy/Typography";
 import { logError } from "../services/LoggerService";
 import { WRITE_AI_SYSTEM_PROMPT } from "../constants";
-import { ChatCompletionMessageParam } from "openai";
-
+// import { ChatCompletionCreateParams } from "openai";
 type MessagesPaneProps = {
   chat: ChatProps;
   // messagesFT:ChatProps;
@@ -20,6 +19,11 @@ type MessagesPaneProps = {
   isLoading: boolean;
   setIsLoading: Function;
 };
+
+interface ChatMessage {
+  role: "system" | "user" | "assistant";
+  content: string;
+}
 
 function getFormattedTime() {
   const now = new Date();
@@ -61,7 +65,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
       setIsLoading(true);
 
 
-      const messages: ChatCompletionMessageParam[] = []; // This should persist across interactions
+      const messages: ChatMessage[] = []; // This should persist across interactions
       // Add system message only once
       // messages.push({ role: "system", content: WRITE_AI_SYSTEM_PROMPT });
 
@@ -220,7 +224,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
         dangerouslyAllowBrowser: true,
       });
 
-      const messages: ChatCompletionMessageParam[] = []; // This should persist across interactions
+      const messages: ChatMessage[] = []; // This should persist across interactions
       // Add system message only once
       messages.push({ role: "system", content: WRITE_AI_SYSTEM_PROMPT });
 
