@@ -10,6 +10,9 @@ import { OpenAI } from "openai";
 import Typography from "@mui/joy/Typography";
 import { logError } from "../services/LoggerService";
 import { WRITE_AI_SYSTEM_PROMPT } from "../constants";
+import { useRef } from "react";
+import Button from "@mui/joy/Button";
+import StopIcon from "@mui/icons-material/Stop";
 // import { ChatCompletionCreateParams } from "openai";
 type MessagesPaneProps = {
   chat: ChatProps;
@@ -52,6 +55,8 @@ export default function MessagesPane(props: MessagesPaneProps) {
     chat.messagesFT
   );
   const [emptyTextAreaValue, setEmptyTextAreaValue] = React.useState("");
+  const abortControllerRef = useRef<AbortController>(null);
+  const abortControllerRefFT = useRef<AbortController>(null);
 
   const key: string = import.meta.env.VITE_OPEN_AI_KEY;
 
@@ -60,27 +65,61 @@ export default function MessagesPane(props: MessagesPaneProps) {
     setftChatMessages(chat.messagesFT);
   }, [chat.messages, chat.messagesFT]);
 
+  const handleAbortRequest = () => {
+    // Check if the current abort controller exists
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+
+      // Remove last message if it was empty
+      if (
+        chatMessages[chatMessages.length - 1] &&
+        chatMessages[chatMessages.length - 1].sender != "You" &&
+        chatMessages[chatMessages.length - 1].content.length == 0
+      ) {
+        setChatMessages((prevMessages) => prevMessages.slice(0, -1));
+      }
+
+      console.log("Aborting", abortControllerRef);
+    } else {
+      console.log("No abort controller to abort.");
+    }
+  };
+
+  const handleAbortRequestFT = () => {
+    // Check if the current abort controller exists
+    if (abortControllerRefFT.current) {
+      abortControllerRefFT.current.abort(); // Abort the request
+      if (
+        ftChatMessages[ftChatMessages.length - 1] &&
+        ftChatMessages[ftChatMessages.length - 1].sender != "You" &&
+        ftChatMessages[ftChatMessages.length - 1].content.length == 0
+      ) {
+        setftChatMessages((prevMessages) => prevMessages.slice(0, -1));
+      }
+    } else {
+      console.log("No abort controller to abort.");
+    }
+  };
+
   const handleCompletion = async (model = "o1") => {
     try {
       setIsLoading(true);
-
-
+      const newAbortController = new AbortController();
+      abortControllerRef.current = newAbortController;
       const messages: ChatMessage[] = []; // This should persist across interactions
       // Add system message only once
       // messages.push({ role: "system", content: WRITE_AI_SYSTEM_PROMPT });
 
-      chatMessages.forEach(message => {
-        if (message.sender == 'You') {
+      chatMessages.forEach((message) => {
+        if (message.sender == "You") {
           messages.push({ role: "user", content: message.content });
         } else {
           messages.push({ role: "assistant", content: message.content });
         }
       });
 
-
       // Add the new user message
       messages.push({ role: "user", content: textAreaValue });
-
 
       setChatMessages([
         ...chatMessages,
@@ -121,7 +160,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
           model: model,
           stream: true,
         },
-        { maxRetries: 5 }
+        { maxRetries: 5, signal: abortControllerRef.current.signal }
       );
 
       let fullMessage = ""; // Store the full AI response
@@ -129,6 +168,16 @@ export default function MessagesPane(props: MessagesPaneProps) {
       let newId = chatMessages.length + 1;
 
       for await (const chunk of response) {
+        if (
+          abortControllerRef.current &&
+          abortControllerRef.current.signal.aborted
+        ) {
+          // abortControllerRef.current = null;
+          // console.log("Request aborted, stopping processing.");
+          break;
+        } else {
+          // console.log("No Abort!", abortControllerRef.current);
+        }
         const content = chunk.choices[0]?.delta?.content;
         if (content) {
           setChatMessages((prevChatMessages) => {
@@ -176,10 +225,17 @@ export default function MessagesPane(props: MessagesPaneProps) {
         content: fullMessage,
         timestamp: getFormattedTime(),
       });
+      handleAbortRequest();
       setIsLoading(false);
-    } catch (error) {
+    } catch (error: any) {
+      if (error.message === "Request was aborted.") {
+        console.warn("Request was aborted by the user.");
+        return;
+      }
+
       logError(error);
       setIsLoading(false);
+      handleAbortRequest();
       alert("Ooooops! Something went wrong !");
     }
   };
@@ -189,6 +245,8 @@ export default function MessagesPane(props: MessagesPaneProps) {
   ) => {
     try {
       setIsLoading(true);
+      const newAbortController = new AbortController();
+      abortControllerRefFT.current = newAbortController;
 
       let newId = ftChatMessages.length;
       setftChatMessages((prevMessages) => [
@@ -228,18 +286,16 @@ export default function MessagesPane(props: MessagesPaneProps) {
       // Add system message only once
       messages.push({ role: "system", content: WRITE_AI_SYSTEM_PROMPT });
 
-      ftChatMessages.forEach(message => {
-        if (message.sender == 'You') {
+      ftChatMessages.forEach((message) => {
+        if (message.sender == "You") {
           messages.push({ role: "user", content: message.content });
         } else {
           messages.push({ role: "assistant", content: message.content });
         }
       });
 
-
       // Add the new user message
       messages.push({ role: "user", content: emptyTextAreaValue });
-      
 
       const response = await client.chat.completions.create(
         {
@@ -248,12 +304,18 @@ export default function MessagesPane(props: MessagesPaneProps) {
             "ft:gpt-4o-2024-08-06:gateway-x:jp-linkedin-top-30-likes-2025-03-10:B9jJFWXa",
           stream: true,
         },
-        { maxRetries: 5 }
+        { maxRetries: 5, signal: abortControllerRefFT.current.signal }
       );
 
       let fullMessage = "";
 
       for await (const chunk of response) {
+        if (
+          abortControllerRefFT.current &&
+          abortControllerRefFT.current.signal.aborted
+        ) {
+          break;
+        }
         const content = chunk.choices[0]?.delta?.content;
         if (content) {
           setftChatMessages((prevChatMessages) => {
@@ -298,11 +360,16 @@ export default function MessagesPane(props: MessagesPaneProps) {
         timestamp: getFormattedTime(),
       });
       setIsLoading(false);
-
-    } catch (error) {
+      handleAbortRequestFT();
+    } catch (error: any) {
+      if (error.message === "Request was aborted.") {
+        console.warn("Request was aborted by the user.");
+        return;
+      }
       alert("Error fetching AI response:");
       logError(error);
       setIsLoading(false);
+      handleAbortRequestFT();
     }
   };
 
@@ -399,11 +466,25 @@ export default function MessagesPane(props: MessagesPaneProps) {
             })}
           </Stack>
         </Box>
-        <MessageInput
-          textAreaValue={textAreaValue}
-          setTextAreaValue={setTextAreaValue}
-          onSubmit={handleCompletion}
-        />
+        {/* Conditionally render Stop button or MessageInput */}
+        {abortControllerRef.current &&
+        !abortControllerRef.current.signal.aborted ? (
+          <Button
+            size="sm"
+            color="danger"
+            sx={{ alignSelf: "center", borderRadius: "sm", mb: 2 }} // Add margin bottom (mb)
+            endDecorator={<StopIcon />}
+            onClick={handleAbortRequest}
+          >
+            Stop
+          </Button> // Show Stop button if abortController exists
+        ) : (
+          <MessageInput
+            textAreaValue={textAreaValue}
+            setTextAreaValue={setTextAreaValue}
+            onSubmit={handleCompletion}
+          />
+        )}
       </Sheet>
       <Sheet
         sx={{
@@ -467,7 +548,8 @@ export default function MessagesPane(props: MessagesPaneProps) {
                 textAlign: "center",
               }}
             >
-              Step 2: Use the extracted info to generate and refine your newsletter.
+              Step 2: Use the extracted info to generate and refine your
+              newsletter.
             </Box>
           )}
           <Stack spacing={2} sx={{ justifyContent: "flex-end" }}>
@@ -487,11 +569,24 @@ export default function MessagesPane(props: MessagesPaneProps) {
         </Box>
 
         {/* Message input always stays at the bottom */}
-        <MessageInput
-          textAreaValue={emptyTextAreaValue}
-          setTextAreaValue={setEmptyTextAreaValue}
-          onSubmit={handleCompletionFT}
-        />
+        {abortControllerRefFT.current &&
+        !abortControllerRefFT.current.signal.aborted ? (
+          <Button
+            size="sm"
+            color="danger"
+            sx={{ alignSelf: "center", borderRadius: "sm", mb: 2 }} // Add margin bottom (mb)
+            endDecorator={<StopIcon />}
+            onClick={handleAbortRequestFT}
+          >
+            Stop
+          </Button> // Show Stop button if abortController exists
+        ) : (
+          <MessageInput
+            textAreaValue={emptyTextAreaValue}
+            setTextAreaValue={setEmptyTextAreaValue}
+            onSubmit={handleCompletionFT}
+          />
+        )}
       </Sheet>
     </Box>
   );
