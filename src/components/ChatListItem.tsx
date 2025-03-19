@@ -11,6 +11,7 @@ import { ChatProps, MessageProps, UserProps } from "../components/types";
 import { toggleMessagesPane } from "../components/utils";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AlertDialog from "./ConfirmationDialog";
+
 type ChatListItemProps = ListItemButtonProps & {
   id: string;
   unread?: boolean;
@@ -19,74 +20,75 @@ type ChatListItemProps = ListItemButtonProps & {
   messagesFT: MessageProps[];
   selectedChatId?: string;
   setSelectedChat: (chat: ChatProps) => void;
-  handleDeleteSession:Function;
-  isLoading:boolean;
+  handleDeleteSession: Function;
+  isLoading: boolean;
 };
 
 export default function ChatListItem(props: ChatListItemProps) {
-  const { id, sender, messages, selectedChatId, setSelectedChat, messagesFT,handleDeleteSession, isLoading } =
+  const { id, sender, messages, selectedChatId, setSelectedChat, messagesFT, handleDeleteSession, isLoading } =
     props;
   const selected = selectedChatId === id;
+
+  // Truncate the last message to 45 characters if it exceeds
+  const lastMessageContent =
+    messages.length > 0 && messages[messages.length - 1].content
+      ? messages[messages.length - 1].content.substring(0, 45) + (messages[messages.length - 1].content.length > 45 ? "..." : "")
+      : "";
+
   return (
     <>
-    <React.Fragment>
-      <ListItem>
-        <ListItemButton
-          onClick={() => {
-            
-            if (isLoading) {
-              alert("AI is generating a response. Changing the session will interrupt the response stream. Please wait until the response is complete.");
-              return ;
-            }
-            
-            toggleMessagesPane();
-            setSelectedChat({ id, sender, messages, messagesFT });
-          }}
-          selected={selected}
-          color="neutral"
-          sx={{ flexDirection: "column", alignItems: "initial", gap: 1 }}
-        >
-          <Stack direction="row" spacing={1.5}>
-            <AvatarWithStatus online={sender.online} src={sender.avatar} />
-            <Box sx={{ flex: 1 }}>
-              <Typography level="title-sm">{sender.name}</Typography>
-              <Typography level="body-sm">{sender.username}</Typography>
-            </Box>
-            <Box sx={{ lineHeight: 1.5, textAlign: "right" }}>
-              {messages.length > 0 && messages[messages.length-1].unread && (
-                <CircleIcon sx={{ fontSize: 12 }} color="primary" />
-              )}
-              <Typography
-                level="body-xs"
-                noWrap
-                sx={{ display: { xs: "none", md: "block" } }}
-              >
-                {/* 5 mins ago */}
-              </Typography>
-              <Typography onClick={(e: React.MouseEvent)=>{
-                e.stopPropagation();
-                handleDeleteSession(id);
-              }} >
-                <DeleteIcon />
-              </Typography>
-            </Box>
-          </Stack>
-          <Typography
-            level="body-sm"
-            sx={{
-              display: "-webkit-box",
-              WebkitLineClamp: "2",
-              WebkitBoxOrient: "vertical",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
+      <React.Fragment>
+        <ListItem>
+          <ListItemButton
+            onClick={() => {
+              toggleMessagesPane();
+              setSelectedChat({ id, sender, messages, messagesFT });
             }}
+            selected={selected}
+            color="neutral"
+            sx={{ flexDirection: "column", alignItems: "initial", gap: 1 }}
           >
-            { messages.length > 0 && messages[messages.length-1].content}
-          </Typography>
-        </ListItemButton>
-      </ListItem>
-      <ListDivider sx={{ margin: 0 }} />
-    </React.Fragment>
+            <Stack direction="row" spacing={1.5}>
+              <AvatarWithStatus online={sender.online} src={sender.avatar} />
+              <Box sx={{ flex: 1 }}>
+                <Typography level="title-sm">{sender.name}</Typography>
+                <Typography level="body-sm">{sender.username}</Typography>
+              </Box>
+              <Box sx={{ lineHeight: 1.5, textAlign: "right" }}>
+                {messages.length > 0 && messages[messages.length - 1].unread && (
+                  <CircleIcon sx={{ fontSize: 12 }} color="primary" />
+                )}
+                <Typography level="body-xs" sx={{ display: { xs: "none", md: "block" } }}>
+                  {/* 5 mins ago */}
+                </Typography>
+                <Typography
+                  onClick={(e: React.MouseEvent) => {
+                    e.stopPropagation();
+                    handleDeleteSession(id);
+                  }}
+                >
+                  <DeleteIcon />
+                </Typography>
+              </Box>
+            </Stack>
+
+            {/* Last message preview truncated to 45 characters */}
+            <Typography
+              level="body-sm"
+              sx={{
+                display: "-webkit-box",
+                WebkitLineClamp: "2",
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {lastMessageContent}
+            </Typography>
+          </ListItemButton>
+        </ListItem>
+        <ListDivider sx={{ margin: 0 }} />
+      </React.Fragment>
     </>
   );
 }

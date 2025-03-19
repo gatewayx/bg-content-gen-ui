@@ -58,6 +58,10 @@ export default function ChatBubble({
               backgroundColor: isSent
                 ? "var(--joy-palette-primary-solidBg)"
                 : "background.body",
+              maxWidth: "100%", // Ensures no overflow on width
+              wordBreak: "break-word", // Breaks long words into multiple lines
+              whiteSpace: "pre-wrap", // Wraps text that exceeds available space
+              overflowWrap: "break-word", // Allows breaking of long words to avoid overflow
             }}
           >
             {content.length === 0 ? (
@@ -78,7 +82,6 @@ export default function ChatBubble({
                   color: isSent
                     ? "var(--joy-palette-common-white)"
                     : "var(--joy-palette-text-primary)",
-                  whiteSpace: "pre-wrap",
                 }}
               >
                 {content}
