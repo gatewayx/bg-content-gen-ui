@@ -1,35 +1,40 @@
 import { WRITE_AI_SYSTEM_PROMPT, DEFAULT_MODELS } from '../constants';
 
-// Storage keys for settings
+type ModelValue = string;
+
+interface Settings {
+  researchModel: ModelValue;
+  writerModel: ModelValue;
+  researchPrompts: Record<ModelValue, string>; // Map of model -> prompt
+  writerPrompts: Record<ModelValue, string>;   // Map of model -> prompt
+}
+
+// Storage keys
 const STORAGE_KEYS = {
   RESEARCH_MODEL: 'research_model',
   WRITER_MODEL: 'writer_model',
-  RESEARCH_PROMPT: 'research_prompt',
-  WRITER_PROMPT: 'writer_prompt'
+  RESEARCH_PROMPTS: 'research_prompts',
+  WRITER_PROMPTS: 'writer_prompts'
 };
-
-interface Settings {
-  researchModel: string;
-  writerModel: string;
-  researchPrompt?: string; // Optional, only included if set
-  writerPrompt: string;
-}
 
 /**
  * Get all settings from localStorage or defaults
  */
 export const getSettings = (): Settings => {
-  const settings: Settings = {
-    researchModel: localStorage.getItem(STORAGE_KEYS.RESEARCH_MODEL) || DEFAULT_MODELS.RESEARCH,
-    writerModel: localStorage.getItem(STORAGE_KEYS.WRITER_MODEL) || DEFAULT_MODELS.WRITER,
-    writerPrompt: localStorage.getItem(STORAGE_KEYS.WRITER_PROMPT) || WRITE_AI_SYSTEM_PROMPT,
-  };
+  const researchModel = localStorage.getItem(STORAGE_KEYS.RESEARCH_MODEL) || DEFAULT_MODELS.RESEARCH;
+  const writerModel = localStorage.getItem(STORAGE_KEYS.WRITER_MODEL) || DEFAULT_MODELS.WRITER;
+  const researchPrompts = JSON.parse(localStorage.getItem(STORAGE_KEYS.RESEARCH_PROMPTS) || '{}');
+  const writerPrompts = JSON.parse(localStorage.getItem(STORAGE_KEYS.WRITER_PROMPTS) || 
+    // Initialize with default writer prompt for default model
+    JSON.stringify({ [DEFAULT_MODELS.WRITER]: WRITE_AI_SYSTEM_PROMPT }));
 
-  // Only include research prompt if it exists in localStorage and is not empty
-  const researchPrompt = localStorage.getItem(STORAGE_KEYS.RESEARCH_PROMPT);
-  if (researchPrompt && researchPrompt.trim() !== '') {
-    settings.researchPrompt = researchPrompt;
-  }
+  // Return settings
+  const settings: Settings = {
+    researchModel,
+    writerModel,
+    researchPrompts,
+    writerPrompts
+  };
 
   return settings;
 };
@@ -40,8 +45,9 @@ export const getSettings = (): Settings => {
 export const saveSettings = (settings: Settings) => {
   localStorage.setItem(STORAGE_KEYS.RESEARCH_MODEL, settings.researchModel);
   localStorage.setItem(STORAGE_KEYS.WRITER_MODEL, settings.writerModel);
-  if (settings.researchPrompt) {
-    localStorage.setItem(STORAGE_KEYS.RESEARCH_PROMPT, settings.researchPrompt);
-  }
-  localStorage.setItem(STORAGE_KEYS.WRITER_PROMPT, settings.writerPrompt);
+  localStorage.setItem(STORAGE_KEYS.RESEARCH_PROMPTS, JSON.stringify(settings.researchPrompts));
+  localStorage.setItem(STORAGE_KEYS.WRITER_PROMPTS, JSON.stringify(settings.writerPrompts));
+  
+  // Trigger storage event to notify other components
+  window.dispatchEvent(new Event('storage'));
 }; 

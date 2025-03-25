@@ -81,6 +81,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
         </Stack>
       </Box>
       <MessageInput
+        // modelId={chat.modelId}
         textAreaValue={textAreaValue}
         setTextAreaValue={setTextAreaValue}
         onSubmit={() => {

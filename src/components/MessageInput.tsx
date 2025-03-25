@@ -4,17 +4,19 @@ import Button from '@mui/joy/Button';
 import FormControl from '@mui/joy/FormControl';
 import Textarea from '@mui/joy/Textarea';
 import { Stack } from '@mui/joy';
-
+import Typography from '@mui/joy/Typography';
 import SendRoundedIcon from '@mui/icons-material/SendRounded';
+import { getModelDisplayName } from '../constants';
 
 export type MessageInputProps = {
   textAreaValue: string;
   setTextAreaValue: (value: string) => void;
   onSubmit: () => void;
+  modelId?: string;
 };
 
 export default function MessageInput(props: MessageInputProps) {
-  const { textAreaValue, setTextAreaValue, onSubmit } = props;
+  const { textAreaValue, setTextAreaValue, onSubmit, modelId = '' } = props;
   const textAreaRef = React.useRef<HTMLTextAreaElement>(null);
 
   // Auto resize textarea height
@@ -60,18 +62,23 @@ export default function MessageInput(props: MessageInputProps) {
               <div>
                 {/* Optional: Add any other toolbar icons here */}
               </div>
-              <Button
-                size="sm"
-                color="primary"
-                sx={{ alignSelf: 'center', borderRadius: 'sm' }}
-                endDecorator={<SendRoundedIcon />}
-                onClick={handleClick}
-              >
-                Send
-              </Button>
+              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 0.5 }}>
+                <Typography level="body-xs" color="neutral">
+                  {getModelDisplayName(modelId)}
+                </Typography>
+                <Button
+                  size="sm"
+                  color="primary"
+                  sx={{ alignSelf: 'center', borderRadius: 'sm' }}
+                  endDecorator={<SendRoundedIcon />}
+                  onClick={handleClick}
+                >
+                  Send
+                </Button>
+              </Box>
             </Stack>
           }
-          onInput={handleInput} // Adjust height on input
+          onInput={handleInput}
           onKeyDown={(event) => {
             if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
               handleClick();

@@ -60,15 +60,46 @@ You must only use the information explicitly mentioned in the transcript.
 
 export const AI_MODELS = {
   O1: 'o1',
-  JESSE_VOICE: 'ft:gpt-4o-2024-08-06:gateway-x:jp-linkedin-top-30-likes-2025-03-10:B9jJFWXa'
+  JESSE_VOICE: 'ft:gpt-4o-2024-08-06:gateway-x:jp-linkedin-top-30-likes-2025-03-10:B9jJFWXa',
+  ICP_WRITER: 'ft:gpt-4o-2024-08-06:gateway-x:ft-adil-icp:BDIHHkcy'
 } as const;
 
-export const MODEL_OPTIONS = [
+type ModelValue = string;
+
+type ModelOption = {
+  label: string;
+  value: ModelValue | 'divider';
+  disabled?: boolean;
+};
+
+// Model options for the settings dropdown
+export const MODEL_OPTIONS: ModelOption[] = [
   { label: 'O1', value: AI_MODELS.O1 },
-  { label: 'Jesse Voice (LinkedIn)', value: AI_MODELS.JESSE_VOICE },
+  { label: '── Fine-tuned Models ──', value: 'divider', disabled: true },
+  { label: 'Jesse Voice (LI)', value: AI_MODELS.JESSE_VOICE },
+  { label: 'ICP Writer', value: AI_MODELS.ICP_WRITER }
 ];
 
+// Default models
 export const DEFAULT_MODELS = {
   RESEARCH: AI_MODELS.O1,
-  WRITER: AI_MODELS.JESSE_VOICE,
+  WRITER: AI_MODELS.JESSE_VOICE  // Set Jesse Voice as default writer model
 } as const;
+
+// Mapping of known fine-tuned model IDs to friendly names
+export const FT_MODEL_NAMES = {
+  'ft:gpt-4o-2024-08-06:gateway-x:jp-linkedin-top-30-likes-2025-03-10:B9jJFWXa': 'Jesse Voice (LI)',
+  'ft:gpt-4o-2024-08-06:gateway-x:ft-adil-icp:BDIHHkcy': 'ICP Writer',
+  'o1': 'O1',
+  // Add more known models here
+} as const;
+
+// Helper function to get display name for a model
+export const getModelDisplayName = (modelId: string): string => {
+  if (modelId in FT_MODEL_NAMES) {
+    return FT_MODEL_NAMES[modelId as keyof typeof FT_MODEL_NAMES];
+  }
+  // If not in our known list, extract and return the suffix after the last colon
+  const suffix = modelId.split(':').pop() || modelId;
+  return `Custom Model (${suffix})`;
+};

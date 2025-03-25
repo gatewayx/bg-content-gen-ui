@@ -13,6 +13,7 @@ import { useRef } from "react";
 import Button from "@mui/joy/Button";
 import StopIcon from "@mui/icons-material/Stop";
 import { getSettings } from "../services/SettingsService";
+import { getModelDisplayName } from "../constants";
 // import { ChatCompletionCreateParams } from "openai";
 type MessagesPaneProps = {
   chat: ChatProps;
@@ -59,6 +60,19 @@ export default function MessagesPane(props: MessagesPaneProps) {
   const abortControllerRefFT = useRef<AbortController>(null);
 
   const key: string = import.meta.env.VITE_OPEN_AI_KEY;
+
+  // Get current settings and update when they change
+  const [settings, setSettings] = React.useState(getSettings());
+
+  // Listen for settings changes
+  React.useEffect(() => {
+    const handleStorageChange = () => {
+      setSettings(getSettings());
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
   React.useEffect(() => {
     setChatMessages(chat.messages);
@@ -112,8 +126,8 @@ export default function MessagesPane(props: MessagesPaneProps) {
       const settings = getSettings();
       
       // Only add system prompt if it exists in settings
-      if (settings.researchPrompt) {
-        messages.push({ role: "system", content: settings.researchPrompt });
+      if (settings.researchPrompts[settings.researchModel]) {
+        messages.push({ role: "system", content: settings.researchPrompts[settings.researchModel] });
       }
 
       chatMessages.forEach((message) => {
@@ -293,7 +307,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
 
       const messages: ChatMessage[] = [];
       // Always add system message for writer
-      messages.push({ role: "system", content: settings.writerPrompt });
+      messages.push({ role: "system", content: settings.writerPrompts[settings.writerModel] || '' });
       
       ftChatMessages.forEach((message) => {
         if (message.sender == "You") {
@@ -382,8 +396,14 @@ export default function MessagesPane(props: MessagesPaneProps) {
   };
 
   return (
-    <Box sx={{ display: "flex", gap: 1 }}>
-      {/* First Chat Box */}
+    <Box sx={{ 
+      display: "flex", 
+      gap: 1,
+      height: '100vh', // Fill entire viewport height
+      overflow: 'hidden' // Prevent outer scrolling
+    }}>
+
+      {/* First Chat Box (Research) */}
       <Sheet
         sx={{
           height: { xs: "calc(100dvh - var(--Header-height))", md: "100dvh" },
@@ -391,6 +411,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
           flexDirection: "column",
           backgroundColor: "background.level1",
           width: "50%",
+          overflow: 'hidden', // Prevent sheet from scrolling
         }}
       >
         <Stack
@@ -417,7 +438,9 @@ export default function MessagesPane(props: MessagesPaneProps) {
               >
                 Research
               </Typography>
-              <Typography level="body-sm"></Typography>
+              <Typography level="body-sm" color="neutral">
+                {getModelDisplayName(settings.researchModel)}
+              </Typography>
             </div>
           </Stack>
         </Stack>
@@ -428,7 +451,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
             minHeight: 0,
             px: 2,
             py: 3,
-            overflowY: "scroll",
+            overflowY: "auto", // Changed from scroll to auto
             flexDirection: "column-reverse",
           }}
         >
@@ -491,9 +514,12 @@ export default function MessagesPane(props: MessagesPaneProps) {
             textAreaValue={textAreaValue}
             setTextAreaValue={setTextAreaValue}
             onSubmit={handleCompletion}
+            modelId={settings.researchModel}
           />
         )}
       </Sheet>
+
+      {/* Second Chat Box (Write) */}
       <Sheet
         sx={{
           height: { xs: "calc(100dvh - var(--Header-height))", md: "100dvh" },
@@ -501,6 +527,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
           flexDirection: "column",
           backgroundColor: "background.level1",
           width: "50%",
+          overflow: 'hidden', // Prevent sheet from scrolling
         }}
       >
         <Stack
@@ -527,7 +554,9 @@ export default function MessagesPane(props: MessagesPaneProps) {
               >
                 Write
               </Typography>
-              <Typography level="body-sm"></Typography>
+              <Typography level="body-sm" color="neutral">
+                {getModelDisplayName(settings.writerModel)}
+              </Typography>
             </div>
           </Stack>
         </Stack>
@@ -538,7 +567,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
             minHeight: 0,
             px: 2,
             py: 3,
-            overflowY: "scroll",
+            overflowY: "auto", // Changed from scroll to auto
             flexDirection: "column-reverse",
             position: "relative",
           }}
@@ -565,7 +594,15 @@ export default function MessagesPane(props: MessagesPaneProps) {
               ftChatMessages.map((message: MessageProps, index: number) => {
                 const isYouFT = message.sender === "You";
                 return (
-                  <Stack key={index} direction="row" spacing={2}>
+                  <Stack 
+                    key={index} 
+                    direction="row" 
+                    spacing={2}
+                    sx={{ 
+                      flexDirection: isYouFT ? "row-reverse" : "row",
+                      justifyContent: isYouFT ? "flex-start" : "flex-start"
+                    }}
+                  >
                     <ChatBubble
                       variant={isYouFT ? "sent" : "received"}
                       {...message}
@@ -593,6 +630,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
             textAreaValue={emptyTextAreaValue}
             setTextAreaValue={setEmptyTextAreaValue}
             onSubmit={handleCompletionFT}
+            modelId={settings.writerModel}
           />
         )}
       </Sheet>

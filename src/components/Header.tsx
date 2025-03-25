@@ -7,29 +7,130 @@ import BugReportIcon from "@mui/icons-material/BugReport";
 import SettingsIcon from "@mui/icons-material/Settings";
 import { downloadLogs } from "../services/LoggerService";
 import { ModalClose, Drawer, FormControl, FormLabel, Select, Option, Textarea, Divider, Button, Box } from "@mui/joy";
-import { MODEL_OPTIONS } from "../constants";
+import { MODEL_OPTIONS, WRITE_AI_SYSTEM_PROMPT, DEFAULT_MODELS, AI_MODELS } from "../constants";
 import { getSettings, saveSettings } from "../services/SettingsService";
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
-import { WRITE_AI_SYSTEM_PROMPT } from "../constants";
+import { fetchFineTunedModels } from "../services/OpenAIService";
+import CircularProgress from '@mui/joy/CircularProgress';
+
+type ModelValue = string;
+
+type ModelOption = {
+  label: string;
+  value: ModelValue | 'divider';
+  disabled?: boolean;
+};
+
 export default function Header() {
   const [open, setOpen] = React.useState(false);
+  const [modelOptions, setModelOptions] = React.useState<ModelOption[]>(MODEL_OPTIONS);
+  const [isLoadingModels, setIsLoadingModels] = React.useState(false);
   
   // Initialize state from settings service
   const initialSettings = React.useMemo(() => getSettings(), []);
-  const [researchModel, setResearchModel] = React.useState(initialSettings.researchModel);
-  const [writerModel, setWriterModel] = React.useState(initialSettings.writerModel);
-  const [researchPrompt, setResearchPrompt] = React.useState(initialSettings.researchPrompt || '');
-  const [writerPrompt, setWriterPrompt] = React.useState(initialSettings.writerPrompt);
+  const [researchModel, setResearchModel] = React.useState<ModelValue>(initialSettings.researchModel);
+  const [writerModel, setWriterModel] = React.useState<ModelValue>(initialSettings.writerModel);
+  const [researchPrompts, setResearchPrompts] = React.useState(initialSettings.researchPrompts);
+  const [writerPrompts, setWriterPrompts] = React.useState(initialSettings.writerPrompts);
+
+  // Fetch fine-tuned models when drawer opens
+  React.useEffect(() => {
+    if (open) {
+      const fetchModels = async () => {
+        setIsLoadingModels(true);
+        try {
+          const apiKey = import.meta.env.VITE_OPEN_AI_KEY;
+          const ftModels = await fetchFineTunedModels(apiKey);
+          
+          // Get existing model IDs from constants
+          const existingModelIds:string[] = Object.values(AI_MODELS);
+
+          console.log(ftModels,existingModelIds);
+          
+          
+          // Filter out models that are already in our constants
+          const newModels: ModelOption[] = ftModels
+            .filter(model => model.status === 'succeeded' && model.fine_tuned_model)
+            .filter(model => !existingModelIds.includes(model.fine_tuned_model!))
+            .map(model => ({
+              label: `Custom Model (${model.fine_tuned_model!.split(':').pop()})`,
+              value: model.fine_tuned_model!,
+            }));
+
+          // Combine with existing options
+          setModelOptions([
+            ...MODEL_OPTIONS.filter(opt => opt.value !== 'divider'),
+            // { label: '── Fine-tuned Models ──', value: 'divider', disabled: true },
+            ...newModels
+          ]);
+        } catch (error) {
+          console.error('Error fetching models:', error);
+        } finally {
+          setIsLoadingModels(false);
+        }
+      };
+
+      fetchModels();
+    }
+  }, [open]);
+
+  // Get current prompts based on selected models
+  const currentResearchPrompt = researchPrompts[researchModel] || '';
+  const currentWriterPrompt = writerPrompts[writerModel] || '';  // Don't fall back to default prompt
+
+  // Handle model changes
+  const handleResearchModelChange = (value: ModelValue | 'divider') => {
+    // Ignore if divider is selected
+    if (value === 'divider') return;
+    
+    setResearchModel(value);
+    // Initialize empty prompt for new model if it doesn't exist
+    if (!researchPrompts[value]) {
+      setResearchPrompts(prev => ({
+        ...prev,
+        [value]: '' // Allow empty prompt
+      }));
+    }
+  };
+
+  const handleWriterModelChange = (value: ModelValue | 'divider') => {
+    // Ignore if divider is selected
+    if (value === 'divider') return;
+    
+    setWriterModel(value);
+    // Initialize with empty or default prompt for new model
+    if (!writerPrompts[value]) {
+      setWriterPrompts(prev => ({
+        ...prev,
+        [value]: value === DEFAULT_MODELS.WRITER ? WRITE_AI_SYSTEM_PROMPT : '' // Only use default for Jesse Voice model
+      }));
+    }
+  };
+
+  // Handle prompt changes
+  const handleResearchPromptChange = (value: string) => {
+    setResearchPrompts(prev => ({
+      ...prev,
+      [researchModel]: value
+    }));
+  };
+
+  const handleWriterPromptChange = (value: string) => {
+    setWriterPrompts(prev => ({
+      ...prev,
+      [writerModel]: value  // Simply save the value as-is, no default fallback
+    }));
+  };
 
   // Function to handle settings update
   const handleUpdateSettings = () => {
     saveSettings({
       researchModel,
       writerModel,
-      researchPrompt: researchPrompt.trim() !== '' ? researchPrompt : undefined,
-      writerPrompt
+      researchPrompts,
+      writerPrompts
     });
-    setOpen(false); // Close drawer after saving
+    setOpen(false);
   };
 
   return (
@@ -126,24 +227,41 @@ export default function Header() {
           <Typography level="h4" sx={{ mb: 2 }}>Research Settings</Typography>
           <FormControl sx={{ mb: 2 }}>
             <FormLabel>Model</FormLabel>
-            <Select
-              value={researchModel}
-              onChange={(_, value) => setResearchModel(value as string)}
-              sx={{ mb: 2 }}
-            >
-              {MODEL_OPTIONS.map((option) => (
-                <Option key={option.value} value={option.value}>
-                  {option.label}
-                </Option>
-              ))}
-            </Select>
+            <Box sx={{ position: 'relative' }}>
+              <Select
+                value={researchModel}
+                onChange={(_, value) => handleResearchModelChange(value as ModelValue | 'divider')}
+                sx={{ mb: 2 }}
+              >
+                {modelOptions.map((option) => (
+                  <Option 
+                    key={option.value} 
+                    value={option.value}
+                    disabled={option.value === 'divider'}
+                  >
+                    {option.label}
+                  </Option>
+                ))}
+              </Select>
+              {isLoadingModels && (
+                <CircularProgress
+                  size="sm"
+                  sx={{
+                    position: 'absolute',
+                    right: 8,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                  }}
+                />
+              )}
+            </Box>
             
-            <FormLabel>System Prompt</FormLabel>
+            <FormLabel>System Prompt (Optional)</FormLabel>
             <Textarea
               minRows={4}
-              value={researchPrompt}
-              onChange={(e) => setResearchPrompt(e.target.value)}
-              placeholder="Enter system prompt for research model..."
+              value={currentResearchPrompt}
+              onChange={(e) => handleResearchPromptChange(e.target.value)}
+              placeholder="Enter system prompt for research model (optional)..."
               sx={{ mb: 3 }}
             />
           </FormControl>
@@ -154,26 +272,43 @@ export default function Header() {
           <Typography level="h4" sx={{ mb: 2 }}>Writer Settings</Typography>
           <FormControl sx={{ mb: 2 }}>
             <FormLabel>Model</FormLabel>
-            <Select
-              value={writerModel}
-              onChange={(_, value) => setWriterModel(value as string)}
-              sx={{ mb: 2 }}
-            >
-              {MODEL_OPTIONS.map((option) => (
-                <Option key={option.value} value={option.value}>
-                  {option.label}
-                </Option>
-              ))}
-            </Select>
+            <Box sx={{ position: 'relative' }}>
+              <Select
+                value={writerModel}
+                onChange={(_, value) => handleWriterModelChange(value as ModelValue | 'divider')}
+                sx={{ mb: 2 }}
+              >
+                {modelOptions.map((option) => (
+                  <Option 
+                    key={option.value} 
+                    value={option.value}
+                    disabled={option.value === 'divider'}
+                  >
+                    {option.label}
+                  </Option>
+                ))}
+              </Select>
+              {isLoadingModels && (
+                <CircularProgress
+                  size="sm"
+                  sx={{
+                    position: 'absolute',
+                    right: 8,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                  }}
+                />
+              )}
+            </Box>
           </FormControl>
 
-          <FormLabel>System Prompt</FormLabel>
+          <FormLabel>System Prompt (Optional)</FormLabel>
           <Box sx={{ position: 'relative' }}>
             <Textarea
               minRows={4}
-              value={writerPrompt}
-              onChange={(e) => setWriterPrompt(e.target.value)}
-              placeholder="Enter system prompt for writer model..."
+              value={currentWriterPrompt}
+              onChange={(e) => handleWriterPromptChange(e.target.value)}
+              placeholder="Enter system prompt for writer model (optional)..."
               sx={{ mb: 3 }}
             />
             <IconButton
@@ -187,7 +322,7 @@ export default function Header() {
                 zIndex: 1,
                 bgcolor: 'background.surface',
               }}
-              onClick={() => setWriterPrompt(WRITE_AI_SYSTEM_PROMPT)}
+              onClick={() => handleWriterPromptChange(WRITE_AI_SYSTEM_PROMPT)}
               title="Reset to default prompt"
             >
               <RestartAltIcon />
