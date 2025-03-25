@@ -57,3 +57,24 @@ You must only use the information explicitly mentioned in the transcript.
 - If details are missing, acknowledge that instead of assuming or filling in gaps.
 - Your goal is to structure, summarize, and refine the content while staying 100% factually accurate.
 `;
+
+export const AI_MODELS = {
+  GPT4: 'gpt-4',
+  GPT35: 'gpt-3.5-turbo',
+  CLAUDE3_OPUS: 'claude-3-opus',
+  CLAUDE3_SONNET: 'claude-3-sonnet',
+  JESSE_VOICE: 'ft:gpt-4o-2024-08-06:gateway-x:jp-linkedin-top-30-likes-2025-03-10:B9jJFWXa'
+} as const;
+
+export const MODEL_OPTIONS = [
+  { label: 'GPT-4', value: AI_MODELS.GPT4 },
+  { label: 'GPT-3.5 Turbo', value: AI_MODELS.GPT35 },
+  { label: 'Claude 3 Opus', value: AI_MODELS.CLAUDE3_OPUS },
+  { label: 'Claude 3 Sonnet', value: AI_MODELS.CLAUDE3_SONNET },
+  { label: 'Jesse Voice (LinkedIn)', value: AI_MODELS.JESSE_VOICE },
+];
+
+export const DEFAULT_MODELS = {
+  RESEARCH: AI_MODELS.GPT4,
+  WRITER: AI_MODELS.JESSE_VOICE,
+} as const;

@@ -9,10 +9,10 @@ import { ChatProps, MessageProps } from "../components/types";
 import { OpenAI } from "openai";
 import Typography from "@mui/joy/Typography";
 import { logError } from "../services/LoggerService";
-import { WRITE_AI_SYSTEM_PROMPT } from "../constants";
 import { useRef } from "react";
 import Button from "@mui/joy/Button";
 import StopIcon from "@mui/icons-material/Stop";
+import { getSettings } from "../services/SettingsService";
 // import { ChatCompletionCreateParams } from "openai";
 type MessagesPaneProps = {
   chat: ChatProps;
@@ -106,9 +106,15 @@ export default function MessagesPane(props: MessagesPaneProps) {
       setIsLoading(true);
       const newAbortController = new AbortController();
       abortControllerRef.current = newAbortController;
-      const messages: ChatMessage[] = []; // This should persist across interactions
-      // Add system message only once
-      // messages.push({ role: "system", content: WRITE_AI_SYSTEM_PROMPT });
+      const messages: ChatMessage[] = [];
+      
+      // Get settings for research model and prompt
+      const settings = getSettings();
+      
+      // Only add system prompt if it exists in settings
+      if (settings.researchPrompt) {
+        messages.push({ role: "system", content: settings.researchPrompt });
+      }
 
       chatMessages.forEach((message) => {
         if (message.sender == "You") {
@@ -157,7 +163,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
       const response = await client.chat.completions.create(
         {
           messages: messages,
-          model: model,
+          model: settings.researchModel, // Use model from settings
           stream: true,
         },
         { maxRetries: 5, signal: abortControllerRef.current.signal }
@@ -248,6 +254,9 @@ export default function MessagesPane(props: MessagesPaneProps) {
       const newAbortController = new AbortController();
       abortControllerRefFT.current = newAbortController;
 
+      // Get settings for writer model and prompt
+      const settings = getSettings();
+
       let newId = ftChatMessages.length;
       setftChatMessages((prevMessages) => [
         ...prevMessages,
@@ -282,10 +291,10 @@ export default function MessagesPane(props: MessagesPaneProps) {
         dangerouslyAllowBrowser: true,
       });
 
-      const messages: ChatMessage[] = []; // This should persist across interactions
-      // Add system message only once
-      messages.push({ role: "system", content: WRITE_AI_SYSTEM_PROMPT });
-
+      const messages: ChatMessage[] = [];
+      // Always add system message for writer
+      messages.push({ role: "system", content: settings.writerPrompt });
+      
       ftChatMessages.forEach((message) => {
         if (message.sender == "You") {
           messages.push({ role: "user", content: message.content });
@@ -300,8 +309,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
       const response = await client.chat.completions.create(
         {
           messages: messages,
-          model:
-            "ft:gpt-4o-2024-08-06:gateway-x:jp-linkedin-top-30-likes-2025-03-10:B9jJFWXa",
+          model: settings.writerModel, // Use model from settings
           stream: true,
         },
         { maxRetries: 5, signal: abortControllerRefFT.current.signal }
