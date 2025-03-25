@@ -59,22 +59,16 @@ You must only use the information explicitly mentioned in the transcript.
 `;
 
 export const AI_MODELS = {
-  GPT4: 'gpt-4',
-  GPT35: 'gpt-3.5-turbo',
-  CLAUDE3_OPUS: 'claude-3-opus',
-  CLAUDE3_SONNET: 'claude-3-sonnet',
+  O1: 'o1',
   JESSE_VOICE: 'ft:gpt-4o-2024-08-06:gateway-x:jp-linkedin-top-30-likes-2025-03-10:B9jJFWXa'
 } as const;
 
 export const MODEL_OPTIONS = [
-  { label: 'GPT-4', value: AI_MODELS.GPT4 },
-  { label: 'GPT-3.5 Turbo', value: AI_MODELS.GPT35 },
-  { label: 'Claude 3 Opus', value: AI_MODELS.CLAUDE3_OPUS },
-  { label: 'Claude 3 Sonnet', value: AI_MODELS.CLAUDE3_SONNET },
+  { label: 'O1', value: AI_MODELS.O1 },
   { label: 'Jesse Voice (LinkedIn)', value: AI_MODELS.JESSE_VOICE },
 ];
 
 export const DEFAULT_MODELS = {
-  RESEARCH: AI_MODELS.GPT4,
+  RESEARCH: AI_MODELS.O1,
   WRITER: AI_MODELS.JESSE_VOICE,
 } as const;
