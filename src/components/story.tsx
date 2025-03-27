@@ -79,7 +79,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
                     // src={message.sender.avatar}
                   />
                 )}
-                <ChatBubble variant={isYou ? 'sent' : 'received'} {...message} />
+                <ChatBubble {...message} />
               </Stack>
             );
           })}

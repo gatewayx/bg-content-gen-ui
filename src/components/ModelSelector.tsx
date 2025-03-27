@@ -25,7 +25,7 @@ export function ModelSelector({ value, onChange }: ModelSelectorProps) {
         
         const models = response.data
           .filter(job => job.status === 'succeeded')
-          .map(job => job.fine_tuned_model)
+          .map(job => job.fine_tuned_model?.split(':')[job.fine_tuned_model?.split(':').length - 2])
           .filter((model): model is string => model !== null);
 
         setFtModels(models);

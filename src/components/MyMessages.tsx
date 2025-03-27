@@ -40,6 +40,7 @@ export default function MyProfile() {
 
   // Save sessions whenever they change
   React.useEffect(() => {
+    alert("sessions changed");
     if (sessions.length > 0) {
       ChatService.setChatSessions(sessions);
     }
@@ -106,7 +107,12 @@ export default function MyProfile() {
     setSessions((prevSessions) =>
       prevSessions.map((session) =>
         session.id === selectedChat?.id
-          ? { ...session, messages: [...session.messages, newMessage] }
+          ? {
+              ...session,
+              messages: session.messages.some(msg => msg.id === newMessage.id)
+                ? session.messages.map(msg => msg.id === newMessage.id ? newMessage : msg)
+                : [...session.messages, newMessage]
+            }
           : session
       )
     );
@@ -116,7 +122,12 @@ export default function MyProfile() {
     setSessions((prevSessions) =>
       prevSessions.map((session) =>
         session.id === selectedChat?.id
-          ? { ...session, messagesFT: [...session.messagesFT, newFTMessage] }
+          ? {
+              ...session,
+              messagesFT: session.messagesFT.some(msg => msg.id === newFTMessage.id)
+                ? session.messagesFT.map(msg => msg.id === newFTMessage.id ? newFTMessage : msg)
+                : [...session.messagesFT, newFTMessage]
+            }
           : session
       )
     );

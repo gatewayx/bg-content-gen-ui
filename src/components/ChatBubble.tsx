@@ -9,18 +9,14 @@ import { IconButton } from "@mui/joy";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import DoneIcon from "@mui/icons-material/Done";
 import ReactMarkdown from 'react-markdown';
-
-type ChatBubbleProps = MessageProps & {
-  variant: "sent" | "received";
-  is_loading?: boolean;
-};
+import Link from '@mui/joy/Link';
+import remarkGfm from 'remark-gfm'
+type ChatBubbleProps = MessageProps;
 
 export default function ChatBubble({
   content = "",
-  variant,
   timestamp = "",
   sender = "You",
-  is_loading = false,
 }: ChatBubbleProps) {
   const isSent = sender === "You";
   const [isCopied, setIsCopied] = React.useState(false);
@@ -94,57 +90,69 @@ export default function ChatBubble({
               />
             ) : (
               <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
                 components={{
-                  // Style markdown elements
+                  // Headings
                   h1: ({ children }) => (
-                    <Typography level="h1" sx={{ color: isSent ? "white" : "inherit" }}>
+                    <Typography level="h1" sx={{ color: isSent ? "white" : "inherit", mb: 2 }}>
                       {children}
                     </Typography>
                   ),
                   h2: ({ children }) => (
-                    <Typography level="h2" sx={{ color: isSent ? "white" : "inherit" }}>
+                    <Typography level="h2" sx={{ color: isSent ? "white" : "inherit", mb: 2 }}>
                       {children}
                     </Typography>
                   ),
                   h3: ({ children }) => (
-                    <Typography level="h3" sx={{ color: isSent ? "white" : "inherit" }}>
+                    <Typography level="h3" sx={{ color: isSent ? "white" : "inherit", mb: 2 }}>
                       {children}
                     </Typography>
                   ),
+                  // Paragraphs
                   p: ({ children }) => (
-                    <Typography level="body-sm" sx={{ color: isSent ? "white" : "inherit" }}>
+                    <Typography level="body-sm" sx={{ color: isSent ? "white" : "inherit", mb: 2 }}>
                       {children}
                     </Typography>
                   ),
+                  // Lists
                   ul: ({ children }) => (
-                    <Box component="ul" sx={{ color: isSent ? "white" : "inherit" }}>
+                    <Box 
+                      component="ul" 
+                      sx={{ 
+                        color: isSent ? "white" : "inherit",
+                        mb: 2,
+                        pl: 2,
+                      }}
+                    >
                       {children}
                     </Box>
                   ),
                   ol: ({ children }) => (
-                    <Box component="ol" sx={{ color: isSent ? "white" : "inherit" }}>
+                    <Box 
+                      component="ol" 
+                      sx={{ 
+                        color: isSent ? "white" : "inherit",
+                        mb: 2,
+                        pl: 2,
+                      }}
+                    >
                       {children}
                     </Box>
                   ),
                   li: ({ children }) => (
-                    <Box component="li" sx={{ color: isSent ? "white" : "inherit" }}>
+                    <Box 
+                      component="li" 
+                      sx={{ 
+                        color: isSent ? "white" : "inherit",
+                        mb: 1,
+                      }}
+                    >
                       {children}
                     </Box>
                   ),
-                  code: ({ inline, children }) => (
-                    inline ? (
-                      <Typography
-                        component="code"
-                        sx={{
-                          backgroundColor: isSent ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
-                          padding: "0.2em 0.4em",
-                          borderRadius: "3px",
-                          color: isSent ? "white" : "inherit",
-                        }}
-                      >
-                        {children}
-                      </Typography>
-                    ) : (
+                  // Code blocks
+                  code: ({  children }) => (
+                    
                       <Box
                         component="pre"
                         sx={{
@@ -153,12 +161,15 @@ export default function ChatBubble({
                           borderRadius: "4px",
                           overflow: "auto",
                           color: isSent ? "white" : "inherit",
+                          fontFamily: "monospace",
+                          mb: 2,
                         }}
                       >
-                        <code>{children}</code>
+                        <Box component="code">{children}</Box>
                       </Box>
-                    )
+                    
                   ),
+                  // Blockquotes
                   blockquote: ({ children }) => (
                     <Box
                       component="blockquote"
@@ -167,11 +178,14 @@ export default function ChatBubble({
                         paddingLeft: "1em",
                         marginLeft: 0,
                         color: isSent ? "white" : "inherit",
+                        mb: 2,
+                        fontStyle: "italic",
                       }}
                     >
                       {children}
                     </Box>
                   ),
+                  // Tables
                   table: ({ children }) => (
                     <Box
                       component="table"
@@ -180,6 +194,7 @@ export default function ChatBubble({
                         width: "100%",
                         margin: "1em 0",
                         color: isSent ? "white" : "inherit",
+                        mb: 2,
                       }}
                     >
                       {children}
@@ -193,6 +208,7 @@ export default function ChatBubble({
                         padding: "0.5em",
                         textAlign: "left",
                         color: isSent ? "white" : "inherit",
+                        fontWeight: "bold",
                       }}
                     >
                       {children}
@@ -210,7 +226,59 @@ export default function ChatBubble({
                       {children}
                     </Box>
                   ),
+                  // Links
+                  a: ({ href, children }) => (
+                    <Link
+                      href={href}
+                      sx={{
+                        color: isSent ? "white" : "inherit",
+                        textDecoration: "underline",
+                        '&:hover': {
+                          opacity: 0.8,
+                        },
+                      }}
+                    >
+                      {children}
+                    </Link>
+                  ),
+                  // Horizontal rules
+                  hr: () => (
+                    <Box
+                      component="hr"
+                      sx={{
+                        border: "none",
+                        borderTop: `1px solid ${isSent ? "white" : "inherit"}`,
+                        margin: "1.5em 0",
+                        opacity: 0.5,
+                      }}
+                    />
+                  ),
+                  // Strong/bold text
+                  strong: ({ children }) => (
+                    <Box
+                      component="strong"
+                      sx={{
+                        fontWeight: "bold",
+                        color: isSent ? "white" : "inherit",
+                      }}
+                    >
+                      {children}
+                    </Box>
+                  ),
+                  // Emphasized/italic text
+                  em: ({ children }) => (
+                    <Box
+                      component="em"
+                      sx={{
+                        fontStyle: "italic",
+                        color: isSent ? "white" : "inherit",
+                      }}
+                    >
+                      {children}
+                    </Box>
+                  ),
                 }}
+                
               >
                 {content}
               </ReactMarkdown>

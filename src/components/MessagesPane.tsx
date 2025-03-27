@@ -87,12 +87,17 @@ export default function MessagesPane(props: MessagesPaneProps) {
 
   // Load session state from local storage on component mount or when session changes
   React.useEffect(() => {
-    const savedSession = localStorage.getItem(`session_${sessionId}`);
+    alert(`session_${sessionId}`)
+    const savedSession = localStorage.getItem(`chat_sessions`);
+    
     if (savedSession) {
       try {
         const sessionState = JSON.parse(savedSession);
-        setChatMessages(sessionState.chatMessages || []);
-        setftChatMessages(sessionState.ftChatMessages || []);
+        const selected = sessionState.filter((obj:ChatProps) => obj.id == chat.id)[0];
+        // console.log(selected);
+        
+        setChatMessages(selected.messages);
+        setftChatMessages(selected.messagesFT);
       } catch (error) {
         console.error('Error loading session state:', error);
         // Reset to empty arrays if there's an error
@@ -107,15 +112,15 @@ export default function MessagesPane(props: MessagesPaneProps) {
   }, [sessionId]);
 
   // Save entire session state to local storage whenever messages change
-  React.useEffect(() => {
-    const sessionState = {
-      chatMessages,
-      ftChatMessages,
-      timestamp: new Date().toISOString(),
-      sessionId,
-    };
-    localStorage.setItem(`session_${sessionId}`, JSON.stringify(sessionState));
-  }, [chatMessages, ftChatMessages, sessionId]);
+  // React.useEffect(() => {
+  //   const sessionState = {
+  //     chatMessages,
+  //     ftChatMessages,
+  //     timestamp: new Date().toISOString(),
+  //     sessionId,
+  //   };
+  //   localStorage.setItem(`session_${sessionId}`, JSON.stringify(sessionState));
+  // }, [chatMessages, ftChatMessages, sessionId]);
 
   const handleAbortRequest = () => {
     if (abortControllerRef.current) {
@@ -243,6 +248,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
         if (lastMessage && typeof lastMessage.sender !== "string") {
           lastMessage.content = fullMessage;
         }
+        handleNewMessage(lastMessage);
         return finalMessages;
       });
 
@@ -348,6 +354,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
         if (lastMessage && typeof lastMessage.sender !== "string") {
           lastMessage.content = fullMessage;
         }
+        handleNewFTMessage(lastMessage);
         return finalMessages;
       });
 
@@ -444,7 +451,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
             </Box>
           )}
           <Stack spacing={2} sx={{ justifyContent: "flex-end" }}>
-            {chatMessages.map((message: MessageProps, index: number) => {
+            {chatMessages && chatMessages.map((message: MessageProps, index: number) => {
               const isYou = message.sender === "You";
               return (
                 <Stack
@@ -460,7 +467,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
                     />
                   )}
                   <ChatBubble
-                    variant={isYou ? "sent" : "received"}
+                    
                     {...message}
                   />
                 </Stack>
@@ -576,7 +583,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
                     }}
                   >
                     <ChatBubble
-                      variant={isYouFT ? "sent" : "received"}
+                    
                       {...message}
                     />
                   </Stack>
