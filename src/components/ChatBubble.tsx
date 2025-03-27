@@ -8,6 +8,7 @@ import { MessageProps } from "../components/types";
 import { IconButton } from "@mui/joy";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import DoneIcon from "@mui/icons-material/Done";
+import ReactMarkdown from 'react-markdown';
 
 type ChatBubbleProps = MessageProps & {
   variant: "sent" | "received";
@@ -28,6 +29,18 @@ export default function ChatBubble({
   const senderName = typeof sender === "string" 
     ? sender 
     : sender.name || "Assistant";
+
+  // Function to handle copy with markdown formatting
+  const handleCopy = () => {
+    try {
+      // Use the original content with markdown formatting
+      navigator.clipboard.writeText(content);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy text:", err);
+    }
+  };
 
   return (
     <Box
@@ -62,10 +75,10 @@ export default function ChatBubble({
               backgroundColor: isSent
                 ? "var(--joy-palette-primary-solidBg)"
                 : "background.body",
-              maxWidth: "100%", // Ensures no overflow on width
-              wordBreak: "break-word", // Breaks long words into multiple lines
-              whiteSpace: "pre-wrap", // Wraps text that exceeds available space
-              overflowWrap: "break-word", // Allows breaking of long words to avoid overflow
+              maxWidth: "100%",
+              wordBreak: "break-word",
+              whiteSpace: "pre-wrap",
+              overflowWrap: "break-word",
             }}
           >
             {content.length === 0 ? (
@@ -80,16 +93,127 @@ export default function ChatBubble({
                 }}
               />
             ) : (
-              <Typography
-                level="body-sm"
-                sx={{
-                  color: isSent
-                    ? "var(--joy-palette-common-white)"
-                    : "var(--joy-palette-text-primary)",
+              <ReactMarkdown
+                components={{
+                  // Style markdown elements
+                  h1: ({ children }) => (
+                    <Typography level="h1" sx={{ color: isSent ? "white" : "inherit" }}>
+                      {children}
+                    </Typography>
+                  ),
+                  h2: ({ children }) => (
+                    <Typography level="h2" sx={{ color: isSent ? "white" : "inherit" }}>
+                      {children}
+                    </Typography>
+                  ),
+                  h3: ({ children }) => (
+                    <Typography level="h3" sx={{ color: isSent ? "white" : "inherit" }}>
+                      {children}
+                    </Typography>
+                  ),
+                  p: ({ children }) => (
+                    <Typography level="body-sm" sx={{ color: isSent ? "white" : "inherit" }}>
+                      {children}
+                    </Typography>
+                  ),
+                  ul: ({ children }) => (
+                    <Box component="ul" sx={{ color: isSent ? "white" : "inherit" }}>
+                      {children}
+                    </Box>
+                  ),
+                  ol: ({ children }) => (
+                    <Box component="ol" sx={{ color: isSent ? "white" : "inherit" }}>
+                      {children}
+                    </Box>
+                  ),
+                  li: ({ children }) => (
+                    <Box component="li" sx={{ color: isSent ? "white" : "inherit" }}>
+                      {children}
+                    </Box>
+                  ),
+                  code: ({ inline, children }) => (
+                    inline ? (
+                      <Typography
+                        component="code"
+                        sx={{
+                          backgroundColor: isSent ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
+                          padding: "0.2em 0.4em",
+                          borderRadius: "3px",
+                          color: isSent ? "white" : "inherit",
+                        }}
+                      >
+                        {children}
+                      </Typography>
+                    ) : (
+                      <Box
+                        component="pre"
+                        sx={{
+                          backgroundColor: isSent ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
+                          padding: "1em",
+                          borderRadius: "4px",
+                          overflow: "auto",
+                          color: isSent ? "white" : "inherit",
+                        }}
+                      >
+                        <code>{children}</code>
+                      </Box>
+                    )
+                  ),
+                  blockquote: ({ children }) => (
+                    <Box
+                      component="blockquote"
+                      sx={{
+                        borderLeft: `4px solid ${isSent ? "white" : "inherit"}`,
+                        paddingLeft: "1em",
+                        marginLeft: 0,
+                        color: isSent ? "white" : "inherit",
+                      }}
+                    >
+                      {children}
+                    </Box>
+                  ),
+                  table: ({ children }) => (
+                    <Box
+                      component="table"
+                      sx={{
+                        borderCollapse: "collapse",
+                        width: "100%",
+                        margin: "1em 0",
+                        color: isSent ? "white" : "inherit",
+                      }}
+                    >
+                      {children}
+                    </Box>
+                  ),
+                  th: ({ children }) => (
+                    <Box
+                      component="th"
+                      sx={{
+                        border: `1px solid ${isSent ? "white" : "inherit"}`,
+                        padding: "0.5em",
+                        textAlign: "left",
+                        color: isSent ? "white" : "inherit",
+                      }}
+                    >
+                      {children}
+                    </Box>
+                  ),
+                  td: ({ children }) => (
+                    <Box
+                      component="td"
+                      sx={{
+                        border: `1px solid ${isSent ? "white" : "inherit"}`,
+                        padding: "0.5em",
+                        color: isSent ? "white" : "inherit",
+                      }}
+                    >
+                      {children}
+                    </Box>
+                  ),
                 }}
               >
                 {content}
-              </Typography>
+              </ReactMarkdown>
             )}
           </Sheet>
         </Box>
@@ -101,15 +225,7 @@ export default function ChatBubble({
           variant={isCopied ? "soft" : "plain"}
           color={isCopied ? "success" : "neutral"}
           size="sm"
-          onClick={() => {
-            try {
-              navigator.clipboard.writeText(content);
-              setIsCopied(true);
-              setTimeout(() => setIsCopied(false), 2000);
-            } catch (err) {
-              console.error("Failed to copy text:", err);
-            }
-          }}
+          onClick={handleCopy}
           sx={{ mt: 1 }}
         >
           {isCopied ? <DoneIcon /> : <ContentCopyIcon />}
