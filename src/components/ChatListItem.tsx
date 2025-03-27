@@ -12,7 +12,7 @@ import { toggleMessagesPane } from "../components/utils";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AlertDialog from "./ConfirmationDialog";
 
-type ChatListItemProps = ListItemButtonProps & {
+interface ChatListItemProps {
   id: string;
   unread?: boolean;
   sender: UserProps;
@@ -22,11 +22,19 @@ type ChatListItemProps = ListItemButtonProps & {
   setSelectedChat: (chat: ChatProps) => void;
   handleDeleteSession: Function;
   isLoading: boolean;
-};
+}
 
-export default function ChatListItem(props: ChatListItemProps) {
-  const { id, sender, messages, selectedChatId, setSelectedChat, messagesFT, handleDeleteSession, isLoading } =
-    props;
+export default function ChatListItem({
+  id,
+  unread,
+  sender,
+  messages,
+  messagesFT,
+  selectedChatId,
+  setSelectedChat,
+  handleDeleteSession,
+  isLoading,
+}: ChatListItemProps) {
   const selected = selectedChatId === id;
 
   // Truncate the last message to 45 characters if it exceeds

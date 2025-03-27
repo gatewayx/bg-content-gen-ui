@@ -7,6 +7,8 @@ import ChatBubble from './ChatBubble';
 import MessageInput from './MessageInput';
 import MessagesPaneHeader from './MessagesPaneHeader';
 import { ChatProps, MessageProps } from '../components/types';
+import { getSettings } from "../services/SettingsService";
+import { getModelDisplayName } from "../constants";
 
 type MessagesPaneProps = {
   chat: ChatProps;
@@ -30,6 +32,9 @@ export default function MessagesPane(props: MessagesPaneProps) {
   const { chat } = props;
   const [chatMessages, setChatMessages] = React.useState(chat.messages);
   const [textAreaValue, setTextAreaValue] = React.useState('');
+  const [emptyTextAreaValue, setEmptyTextAreaValue] = React.useState('');
+  const [isLoading, setIsLoading] = React.useState(false);
+  const settings = getSettings();
 
   React.useEffect(() => {
     setChatMessages(chat.messages);
@@ -70,8 +75,8 @@ export default function MessagesPane(props: MessagesPaneProps) {
               >
                 {message.sender !== 'You' && (
                   <AvatarWithStatus
-                    online={message.sender.online}
-                    src={message.sender.avatar}
+                    online={true}
+                    // src={message.sender.avatar}
                   />
                 )}
                 <ChatBubble variant={isYou ? 'sent' : 'received'} {...message} />
@@ -81,7 +86,6 @@ export default function MessagesPane(props: MessagesPaneProps) {
         </Stack>
       </Box>
       <MessageInput
-        // modelId={chat.modelId}
         textAreaValue={textAreaValue}
         setTextAreaValue={setTextAreaValue}
         onSubmit={() => {
@@ -97,6 +101,8 @@ export default function MessagesPane(props: MessagesPaneProps) {
             },
           ]);
         }}
+        modelId={settings.researchModel}
+        modelName={getModelDisplayName(settings.researchModel)}
       />
     </Sheet>
   );

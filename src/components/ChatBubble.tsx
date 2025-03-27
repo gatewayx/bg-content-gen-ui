@@ -1,5 +1,4 @@
 import * as React from "react";
-import Avatar from "@mui/joy/Avatar";
 import Box from "@mui/joy/Box";
 import Stack from "@mui/joy/Stack";
 import Sheet from "@mui/joy/Sheet";
@@ -25,6 +24,11 @@ export default function ChatBubble({
   const isSent = sender === "You";
   const [isCopied, setIsCopied] = React.useState(false);
 
+  // Get sender name based on type
+  const senderName = typeof sender === "string" 
+    ? sender 
+    : sender.name || "Assistant";
+
   return (
     <Box
       sx={{
@@ -42,7 +46,7 @@ export default function ChatBubble({
           spacing={2}
           sx={{ justifyContent: "space-between", mb: 0.25 }}
         >
-          <Typography level="body-xs">{isSent ? sender : sender.name}</Typography>
+          <Typography level="body-xs">{senderName}</Typography>
           <Typography level="body-xs">{timestamp}</Typography>
         </Stack>
 

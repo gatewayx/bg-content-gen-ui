@@ -6,15 +6,19 @@ import Button from "@mui/joy/Button";
 
 interface MessageInputProps {
   textAreaValue: string;
-  setTextAreaValue: (value: string) => void;
+  setTextAreaValue: React.Dispatch<React.SetStateAction<string>>;
   onSubmit: () => void;
   modelId: string;
   modelName: string;
 }
 
-export default function MessageInput(props: MessageInputProps) {
-  const { textAreaValue, setTextAreaValue, onSubmit, modelName } = props;
-
+export default function MessageInput({
+  textAreaValue,
+  setTextAreaValue,
+  onSubmit,
+  modelId,
+  modelName,
+}: MessageInputProps) {
   return (
     <Box sx={{ px: 2, pb: 2 }}>
       <form
