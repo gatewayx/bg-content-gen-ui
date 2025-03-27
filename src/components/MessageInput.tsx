@@ -1,98 +1,69 @@
-import * as React from 'react';
-import Box from '@mui/joy/Box';
-import Button from '@mui/joy/Button';
-import FormControl from '@mui/joy/FormControl';
-import Textarea from '@mui/joy/Textarea';
-import { Stack } from '@mui/joy';
-import Typography from '@mui/joy/Typography';
-import SendRoundedIcon from '@mui/icons-material/SendRounded';
-import { getModelDisplayName } from '../constants';
+import * as React from "react";
+import Box from "@mui/joy/Box";
+import Textarea from "@mui/joy/Textarea";
+import Typography from "@mui/joy/Typography";
+import Button from "@mui/joy/Button";
 
-export type MessageInputProps = {
+interface MessageInputProps {
   textAreaValue: string;
   setTextAreaValue: (value: string) => void;
   onSubmit: () => void;
-  modelId?: string;
-};
+  modelId: string;
+  modelName: string;
+}
 
 export default function MessageInput(props: MessageInputProps) {
-  const { textAreaValue, setTextAreaValue, onSubmit, modelId = '' } = props;
-  const textAreaRef = React.useRef<HTMLTextAreaElement>(null);
-
-  // Auto resize textarea height
-  const handleInput = () => {
-    const textArea = textAreaRef.current;
-    if (textArea) {
-      textArea.style.height = 'auto'; // Reset height to auto to calculate the new height
-      textArea.style.height = `${Math.min(textArea.scrollHeight, 600)}px`; // Set height to scrollHeight but limit to 600px
-    }
-  };
-
-  const handleClick = () => {
-    if (textAreaValue.trim() !== '') {
-      onSubmit();
-      setTextAreaValue('');
-    }
-  };
+  const { textAreaValue, setTextAreaValue, onSubmit, modelName } = props;
 
   return (
-    <Box sx={{ px: 2, pb: 3 }}>
-      <FormControl>
+    <Box sx={{ px: 2, pb: 2 }}>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          onSubmit();
+        }}
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: "10px",
+        }}
+      >
+        <Typography level="body-sm" color="neutral" sx={{ ml: 1 }}>
+          {modelName}
+        </Typography>
         <Textarea
-          placeholder="Type something here…"
-          aria-label="Message"
-          // ref={textAreaRef}
-          onChange={(event) => setTextAreaValue(event.target.value)}
+          minRows={3}
+          maxRows={5}
           value={textAreaValue}
-          minRows={1}
-          maxRows={5} // Set a maximum number of rows
-          endDecorator={
-            <Stack
-              direction="row"
-              sx={{
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                flexGrow: 1,
-                py: 1,
-                pr: 1,
-                borderTop: '1px solid',
-                borderColor: 'divider',
-              }}
-            >
-              <div>
-                {/* Optional: Add any other toolbar icons here */}
-              </div>
-              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 0.5 }}>
-                <Typography level="body-xs" color="neutral">
-                  {getModelDisplayName(modelId)}
-                </Typography>
-                <Button
-                  size="sm"
-                  color="primary"
-                  sx={{ alignSelf: 'center', borderRadius: 'sm' }}
-                  endDecorator={<SendRoundedIcon />}
-                  onClick={handleClick}
-                >
-                  Send
-                </Button>
-              </Box>
-            </Stack>
-          }
-          onInput={handleInput}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
-              handleClick();
+          onChange={(e) => setTextAreaValue(e.target.value)}
+          placeholder="Type in here…"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              onSubmit();
+              setTextAreaValue("");
             }
           }}
           sx={{
-            '& textarea': {
-              minHeight: 90,
-              maxHeight: 600, // Set maximum height to 600px
-              overflowY: 'auto', // Enable scrolling once the height exceeds 600px
+            fontSize: "sm",
+            lineHeight: "1.5",
+            "&::before": {
+              display: "none",
+            },
+            "&:focus-within": {
+              outline: "2px solid",
+              outlineColor: "primary.500",
             },
           }}
         />
-      </FormControl>
+        <Button
+          type="submit"
+          disabled={!textAreaValue.trim()}
+          sx={{ alignSelf: "flex-end" }}
+        >
+          Send
+        </Button>
+      </form>
     </Box>
   );
 }

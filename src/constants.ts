@@ -95,11 +95,37 @@ export const FT_MODEL_NAMES = {
 } as const;
 
 // Helper function to get display name for a model
-export const getModelDisplayName = (modelId: string): string => {
+export const getModelDisplayName = (modelId: string, userProvidedSuffix?: string): string => {
   if (modelId in FT_MODEL_NAMES) {
     return FT_MODEL_NAMES[modelId as keyof typeof FT_MODEL_NAMES];
   }
-  // If not in our known list, extract and return the suffix after the last colon
-  const suffix = modelId.split(':').pop() || modelId;
-  return `Custom Model (${suffix})`;
+  // For unknown models, use the user_provided_suffix as the label
+  // If not provided, get it from the second-to-last part of the model ID
+  const parts = modelId.split(':');
+  const suffix = userProvidedSuffix || (parts.length >= 2 ? parts[parts.length - 2] : modelId);
+  return `${suffix}`;
+};
+
+// List of tokens to fetch models for selection
+export const MODEL_FETCH_TOKENS = import.meta.env.VITE_OPEN_AI_KEYS.split(',');
+
+// API Token mappings for different models
+export interface ApiTokenMapping {
+  model: string;
+  token: string;
+}
+
+export const API_TOKENS: ApiTokenMapping[] = [
+  // Default models using VITE_OPEN_AI_KEY
+  { model: AI_MODELS.O1, token: import.meta.env.VITE_OPEN_AI_KEY },
+  { model: AI_MODELS.JESSE_VOICE, token: import.meta.env.VITE_OPEN_AI_KEY },
+  // Additional models with their specific tokens
+  { model: AI_MODELS.ICP_WRITER, token: import.meta.env.VITE_ICP_OPEN_AI_KEY },
+  // Add more token mappings here as needed
+];
+
+// Helper function to get API token for a model
+export const getModelApiToken = (modelId: string): string => {
+  const mapping = API_TOKENS.find(m => m.model === modelId);
+  return mapping?.token || import.meta.env.VITE_OPEN_AI_KEY;
 };

@@ -1,53 +1,29 @@
-import { WRITE_AI_SYSTEM_PROMPT, DEFAULT_MODELS } from '../constants';
-
-type ModelValue = string;
-
-interface Settings {
-  researchModel: ModelValue;
-  writerModel: ModelValue;
-  researchPrompts: Record<ModelValue, string>; // Map of model -> prompt
-  writerPrompts: Record<ModelValue, string>;   // Map of model -> prompt
+export interface Settings {
+  researchModel: string;
+  writerModel: string;
+  researchPrompts: Record<string, string>;
+  writerPrompts: Record<string, string>;
+  modelTokens: Record<string, string>;
 }
 
-// Storage keys
-const STORAGE_KEYS = {
-  RESEARCH_MODEL: 'research_model',
-  WRITER_MODEL: 'writer_model',
-  RESEARCH_PROMPTS: 'research_prompts',
-  WRITER_PROMPTS: 'writer_prompts'
+const DEFAULT_SETTINGS: Settings = {
+  researchModel: "o1",
+  writerModel: "ft:gpt-4o-2024-08-06:gateway-x:jp-linkedin-top-30-likes-2025-03-10:B9jJFWXa",
+  researchPrompts: {},
+  writerPrompts: {},
+  modelTokens: {},
 };
 
-/**
- * Get all settings from localStorage or defaults
- */
-export const getSettings = (): Settings => {
-  const researchModel = localStorage.getItem(STORAGE_KEYS.RESEARCH_MODEL) || DEFAULT_MODELS.RESEARCH;
-  const writerModel = localStorage.getItem(STORAGE_KEYS.WRITER_MODEL) || DEFAULT_MODELS.WRITER;
-  const researchPrompts = JSON.parse(localStorage.getItem(STORAGE_KEYS.RESEARCH_PROMPTS) || '{}');
-  const writerPrompts = JSON.parse(localStorage.getItem(STORAGE_KEYS.WRITER_PROMPTS) || 
-    // Initialize with default writer prompt for default model
-    JSON.stringify({ [DEFAULT_MODELS.WRITER]: WRITE_AI_SYSTEM_PROMPT }));
+export function getSettings(): Settings {
+  const savedSettings = localStorage.getItem('settings');
+  if (savedSettings) {
+    return JSON.parse(savedSettings);
+  }
+  return DEFAULT_SETTINGS;
+}
 
-  // Return settings
-  const settings: Settings = {
-    researchModel,
-    writerModel,
-    researchPrompts,
-    writerPrompts
-  };
-
-  return settings;
-};
-
-/**
- * Save all settings to localStorage
- */
-export const saveSettings = (settings: Settings) => {
-  localStorage.setItem(STORAGE_KEYS.RESEARCH_MODEL, settings.researchModel);
-  localStorage.setItem(STORAGE_KEYS.WRITER_MODEL, settings.writerModel);
-  localStorage.setItem(STORAGE_KEYS.RESEARCH_PROMPTS, JSON.stringify(settings.researchPrompts));
-  localStorage.setItem(STORAGE_KEYS.WRITER_PROMPTS, JSON.stringify(settings.writerPrompts));
-  
-  // Trigger storage event to notify other components
+export function saveSettings(settings: Settings): void {
+  localStorage.setItem('settings', JSON.stringify(settings));
+  // Dispatch storage event to notify other components
   window.dispatchEvent(new Event('storage'));
-}; 
+} 

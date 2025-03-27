@@ -7,7 +7,7 @@ import BugReportIcon from "@mui/icons-material/BugReport";
 import SettingsIcon from "@mui/icons-material/Settings";
 import { downloadLogs } from "../services/LoggerService";
 import { ModalClose, Drawer, FormControl, FormLabel, Select, Option, Textarea, Divider, Button, Box } from "@mui/joy";
-import { MODEL_OPTIONS, WRITE_AI_SYSTEM_PROMPT, DEFAULT_MODELS, AI_MODELS } from "../constants";
+import { MODEL_OPTIONS, WRITE_AI_SYSTEM_PROMPT, DEFAULT_MODELS, AI_MODELS, MODEL_FETCH_TOKENS } from "../constants";
 import { getSettings, saveSettings } from "../services/SettingsService";
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import { fetchFineTunedModels } from "../services/OpenAIService";
@@ -19,6 +19,7 @@ type ModelOption = {
   label: string;
   value: ModelValue | 'divider';
   disabled?: boolean;
+  token?: string;
 };
 
 export default function Header() {
@@ -39,30 +40,62 @@ export default function Header() {
       const fetchModels = async () => {
         setIsLoadingModels(true);
         try {
-          const apiKey = import.meta.env.VITE_OPEN_AI_KEY;
-          const ftModels = await fetchFineTunedModels(apiKey);
+          // Fetch models for each token
+          const modelPromises = MODEL_FETCH_TOKENS.map(async (token: string | undefined) => {
+            if (!token) return [];
+            try {
+              const models = await fetchFineTunedModels(token);
+              // Add token information to each model
+              return models.map(model => ({
+                ...model,
+                token
+              }));
+            } catch (error) {
+              console.error(`Error fetching models for token:`, error);
+              return [];
+            }
+          });
+
+          const allModelResults = await Promise.all(modelPromises);
           
           // Get existing model IDs from constants
           const existingModelIds:string[] = Object.values(AI_MODELS);
-
-          console.log(ftModels,existingModelIds);
           
+          // Combine all fine-tuned models
+          const allModels = allModelResults.flat();
           
           // Filter out models that are already in our constants
-          const newModels: ModelOption[] = ftModels
+          const newModels: ModelOption[] = allModels
             .filter(model => model.status === 'succeeded' && model.fine_tuned_model)
             .filter(model => !existingModelIds.includes(model.fine_tuned_model!))
             .map(model => ({
-              label: `Custom Model (${model.fine_tuned_model!.split(':').pop()})`,
+              label: `${model.user_provided_suffix}`,
               value: model.fine_tuned_model!,
+              token: model.token // Store the token with the model option
             }));
 
           // Combine with existing options
           setModelOptions([
             ...MODEL_OPTIONS.filter(opt => opt.value !== 'divider'),
-            // { label: '── Fine-tuned Models ──', value: 'divider', disabled: true },
             ...newModels
           ]);
+
+          // Update settings with model tokens
+          const settings = getSettings();
+          const modelTokens = newModels.reduce((acc, model) => {
+            if (model.token) {
+              acc[model.value] = model.token;
+            }
+            return acc;
+          }, {} as Record<string, string>);
+
+          saveSettings({
+            ...settings,
+            modelTokens: {
+              ...settings.modelTokens,
+              ...modelTokens
+            }
+          });
         } catch (error) {
           console.error('Error fetching models:', error);
         } finally {
@@ -128,7 +161,8 @@ export default function Header() {
       researchModel,
       writerModel,
       researchPrompts,
-      writerPrompts
+      writerPrompts,
+      modelTokens: getSettings().modelTokens // Preserve existing model tokens
     });
     setOpen(false);
   };

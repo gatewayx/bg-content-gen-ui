@@ -5,8 +5,7 @@ import Stack from "@mui/joy/Stack";
 import AvatarWithStatus from "./AvatarWithStatus";
 import ChatBubble from "./ChatBubble";
 import MessageInput from "./MessageInput";
-import { ChatProps, MessageProps } from "../components/types";
-import { OpenAI } from "openai";
+import { ChatProps, MessageProps, UserProps } from "../components/types";
 import Typography from "@mui/joy/Typography";
 import { logError } from "../services/LoggerService";
 import { useRef } from "react";
@@ -14,14 +13,14 @@ import Button from "@mui/joy/Button";
 import StopIcon from "@mui/icons-material/Stop";
 import { getSettings } from "../services/SettingsService";
 import { getModelDisplayName } from "../constants";
-// import { ChatCompletionCreateParams } from "openai";
+import { createChatCompletion } from "../services/OpenAIService";
+
 type MessagesPaneProps = {
   chat: ChatProps;
-  // messagesFT:ChatProps;
-  handleNewMessage: Function;
-  handleNewFTMessage: Function;
+  handleNewMessage: (message: MessageProps) => void;
+  handleNewFTMessage: (message: MessageProps) => void;
   isLoading: boolean;
-  setIsLoading: Function;
+  setIsLoading: (loading: boolean) => void;
 };
 
 interface ChatMessage {
@@ -42,55 +41,95 @@ function getFormattedTime() {
   return `${day} ${time}`;
 }
 
+function isUserProps(sender: MessageProps["sender"]): sender is UserProps {
+  return typeof sender === "object" && "online" in sender && "avatar" in sender;
+}
+
 export default function MessagesPane(props: MessagesPaneProps) {
   const {
     chat,
     handleNewMessage,
     handleNewFTMessage,
-    isLoading,
     setIsLoading,
   } = props;
-  const [chatMessages, setChatMessages] = React.useState(chat.messages);
+
+  // Initialize with empty arrays for new sessions
+  const [chatMessages, setChatMessages] = React.useState<MessageProps[]>([]);
+  const [ftChatMessages, setftChatMessages] = React.useState<MessageProps[]>([]);
   const [textAreaValue, setTextAreaValue] = React.useState("");
-  const [ftChatMessages, setftChatMessages] = React.useState<MessageProps[]>(
-    chat.messagesFT
-  );
   const [emptyTextAreaValue, setEmptyTextAreaValue] = React.useState("");
   const abortControllerRef = useRef<AbortController>(null);
   const abortControllerRefFT = useRef<AbortController>(null);
 
-  const key: string = import.meta.env.VITE_OPEN_AI_KEY;
-
   // Get current settings and update when they change
   const [settings, setSettings] = React.useState(getSettings());
 
-  // Listen for settings changes
+  // Update settings when they change
   React.useEffect(() => {
-    const handleStorageChange = () => {
+    const handleSettingsChange = () => {
       setSettings(getSettings());
     };
 
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+    // Listen for storage changes
+    window.addEventListener('storage', handleSettingsChange);
+    
+    // Also check for settings changes periodically
+    const interval = setInterval(handleSettingsChange, 1000);
+
+    return () => {
+      window.removeEventListener('storage', handleSettingsChange);
+      clearInterval(interval);
+    };
   }, []);
 
+  // Get session ID from chat object
+  const sessionId = chat.id || 'default';
+
+  // Load session state from local storage on component mount or when session changes
   React.useEffect(() => {
-    setChatMessages(chat.messages);
-    setftChatMessages(chat.messagesFT);
-  }, [chat.messages, chat.messagesFT]);
+    const savedSession = localStorage.getItem(`session_${sessionId}`);
+    if (savedSession) {
+      try {
+        const sessionState = JSON.parse(savedSession);
+        setChatMessages(sessionState.chatMessages || []);
+        setftChatMessages(sessionState.ftChatMessages || []);
+      } catch (error) {
+        console.error('Error loading session state:', error);
+        // Reset to empty arrays if there's an error
+        setChatMessages([]);
+        setftChatMessages([]);
+      }
+    } else {
+      // Reset to empty arrays for new sessions
+      setChatMessages([]);
+      setftChatMessages([]);
+    }
+  }, [sessionId]);
+
+  // Save entire session state to local storage whenever messages change
+  React.useEffect(() => {
+    const sessionState = {
+      chatMessages,
+      ftChatMessages,
+      timestamp: new Date().toISOString(),
+      sessionId,
+    };
+    localStorage.setItem(`session_${sessionId}`, JSON.stringify(sessionState));
+  }, [chatMessages, ftChatMessages, sessionId]);
 
   const handleAbortRequest = () => {
-    // Check if the current abort controller exists
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
 
-      // Remove last message if it was empty
       if (
         chatMessages[chatMessages.length - 1] &&
         chatMessages[chatMessages.length - 1].sender != "You" &&
         chatMessages[chatMessages.length - 1].content.length == 0
       ) {
-        setChatMessages((prevMessages) => prevMessages.slice(0, -1));
+        setChatMessages((prevMessages) => {
+          const newMessages = prevMessages.slice(0, -1);
+          return newMessages;
+        });
       }
 
       console.log("Aborting", abortControllerRef);
@@ -100,155 +139,117 @@ export default function MessagesPane(props: MessagesPaneProps) {
   };
 
   const handleAbortRequestFT = () => {
-    // Check if the current abort controller exists
     if (abortControllerRefFT.current) {
-      abortControllerRefFT.current.abort(); // Abort the request
+      abortControllerRefFT.current.abort();
       if (
         ftChatMessages[ftChatMessages.length - 1] &&
         ftChatMessages[ftChatMessages.length - 1].sender != "You" &&
         ftChatMessages[ftChatMessages.length - 1].content.length == 0
       ) {
-        setftChatMessages((prevMessages) => prevMessages.slice(0, -1));
+        setftChatMessages((prevMessages) => {
+          const newMessages = prevMessages.slice(0, -1);
+          return newMessages;
+        });
       }
     } else {
       console.log("No abort controller to abort.");
     }
   };
 
-  const handleCompletion = async (model = "o1") => {
+  const handleCompletion = async () => {
     try {
       setIsLoading(true);
       const newAbortController = new AbortController();
       abortControllerRef.current = newAbortController;
-      const messages: ChatMessage[] = [];
-      
+
       // Get settings for research model and prompt
       const settings = getSettings();
-      
-      // Only add system prompt if it exists in settings
-      if (settings.researchPrompts[settings.researchModel]) {
-        messages.push({ role: "system", content: settings.researchPrompts[settings.researchModel] });
-      }
 
-      chatMessages.forEach((message) => {
-        if (message.sender == "You") {
-          messages.push({ role: "user", content: message.content });
-        } else {
-          messages.push({ role: "assistant", content: message.content });
-        }
-      });
-
-      // Add the new user message
-      messages.push({ role: "user", content: textAreaValue });
-
-      setChatMessages([
+      const newId = chatMessages.length;
+      const initialMessages: MessageProps[] = [
         ...chatMessages,
         {
-          id: (chatMessages.length + 1).toString(),
-          sender: "You",
+          id: (newId + 1).toString(),
+          sender: "You" as const,
           content: textAreaValue,
           timestamp: getFormattedTime(),
         },
         {
-          id: (chatMessages.length + 2).toString(),
+          id: (newId + 2).toString(),
           sender: {
             name: "Session 1",
-            username: "12/23/2023 12:09:40 PM",
+            username: new Date().toLocaleString(),
             avatar: "/static/images/avatar/3.jpg",
             online: true,
           },
           content: "",
           timestamp: getFormattedTime(),
         },
-      ]);
+      ];
+
+      setChatMessages(initialMessages);
 
       handleNewMessage({
-        id: (chatMessages.length + 1).toString(),
-        sender: "You",
+        id: (newId + 1).toString(),
+        sender: "You" as const,
         content: textAreaValue,
         timestamp: getFormattedTime(),
       });
 
-      const client = new OpenAI({
-        apiKey: key,
-        dangerouslyAllowBrowser: true,
+      const messages: ChatMessage[] = [];
+      
+      // Get system message from settings for the current model
+      messages.push({ 
+        role: "system", 
+        content: settings.researchPrompts[settings.researchModel] || '' 
       });
+      
+      // Add all previous messages to the context
+      chatMessages.forEach(msg => {
+        if (msg.sender === "You") {
+          messages.push({ role: "user", content: msg.content });
+        } else if (msg.sender !== "System" && typeof msg.sender !== "string") {
+          messages.push({ role: "assistant", content: msg.content });
+        }
+      });
+      
+      // Add current user message
+      messages.push({ role: "user", content: textAreaValue });
 
-      const response = await client.chat.completions.create(
-        {
-          messages: messages,
-          model: settings.researchModel, // Use model from settings
-          stream: true,
-        },
-        { maxRetries: 5, signal: abortControllerRef.current.signal }
-      );
+      // Get the token for the selected model
+      const modelToken = settings.modelTokens[settings.researchModel] || import.meta.env.VITE_OPEN_AI_KEY;
+      const response = await createChatCompletion(settings.researchModel, messages, modelToken);
 
       let fullMessage = ""; // Store the full AI response
 
-      let newId = chatMessages.length + 1;
-
       for await (const chunk of response) {
-        if (
-          abortControllerRef.current &&
-          abortControllerRef.current.signal.aborted
-        ) {
-          // abortControllerRef.current = null;
-          // console.log("Request aborted, stopping processing.");
-          break;
-        } else {
-          // console.log("No Abort!", abortControllerRef.current);
-        }
-        const content = chunk.choices[0]?.delta?.content;
-        if (content) {
-          setChatMessages((prevChatMessages) => {
-            let updatedMessages = [...prevChatMessages];
-            let lastMessage = updatedMessages[updatedMessages.length - 1];
-
-            lastMessage = updatedMessages[updatedMessages.length - 1];
-
-            if (lastMessage?.sender !== "You") {
-              // Append AI response to the existing AI message
-              updatedMessages[updatedMessages.length - 1] = {
-                ...lastMessage,
-                content: lastMessage.content + content,
-              };
-            } else {
-              // If last message is from "You", add AI's response as a new message
-              updatedMessages.push({
-                id: newId.toString(),
-                sender: {
-                  name: "Session 1",
-                  username: "12/23/2023 12:09:40 PM",
-                  avatar: "/static/images/avatar/3.jpg",
-                  online: true,
-                },
-                content: content,
-                timestamp: getFormattedTime(),
-              });
+        if (chunk.choices[0]?.delta?.content) {
+          fullMessage += chunk.choices[0].delta.content;
+          setChatMessages((prevMessages) => {
+            const updatedMessages = [...prevMessages];
+            const lastMessage = updatedMessages[updatedMessages.length - 1];
+            if (lastMessage && typeof lastMessage.sender !== "string") {
+              lastMessage.content = fullMessage;
             }
-
             return updatedMessages;
           });
-          fullMessage += content;
         }
       }
 
-      // 🛑 Full AI Response after loop ends
-      handleNewMessage({
-        id: newId.toString(),
-        sender: {
-          name: "Session 1",
-          username: "12/23/2023 12:09:40 PM",
-          avatar: "/static/images/avatar/3.jpg",
-          online: true,
-        },
-        content: fullMessage,
-        timestamp: getFormattedTime(),
+      // Save the final state of messages after completion
+      setChatMessages((prevMessages) => {
+        const finalMessages = [...prevMessages];
+        const lastMessage = finalMessages[finalMessages.length - 1];
+        if (lastMessage && typeof lastMessage.sender !== "string") {
+          lastMessage.content = fullMessage;
+        }
+        return finalMessages;
       });
+
       handleAbortRequest();
       setIsLoading(false);
-    } catch (error: any) {
-      if (error.message === "Request was aborted.") {
+    } catch (error: unknown) {
+      if (error instanceof Error && error.message === "Request was aborted.") {
         console.warn("Request was aborted by the user.");
         return;
       }
@@ -260,9 +261,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
     }
   };
 
-  const handleCompletionFT = async (
-    model = "ft:gpt-4o-2024-08-06:gateway-x:jp-linkedin-top-30-likes-2025-03-10:B9jJFWXa"
-  ) => {
+  const handleCompletionFT = async () => {
     try {
       setIsLoading(true);
       const newAbortController = new AbortController();
@@ -271,12 +270,12 @@ export default function MessagesPane(props: MessagesPaneProps) {
       // Get settings for writer model and prompt
       const settings = getSettings();
 
-      let newId = ftChatMessages.length;
-      setftChatMessages((prevMessages) => [
-        ...prevMessages,
+      const newId = ftChatMessages.length;
+      const initialMessages: MessageProps[] = [
+        ...ftChatMessages,
         {
           id: (newId + 1).toString(),
-          sender: "You",
+          sender: "You" as const,
           content: emptyTextAreaValue,
           timestamp: getFormattedTime(),
         },
@@ -291,107 +290,79 @@ export default function MessagesPane(props: MessagesPaneProps) {
           content: "",
           timestamp: getFormattedTime(),
         },
-      ]);
+      ];
+
+      setftChatMessages(initialMessages);
 
       handleNewFTMessage({
         id: (newId + 1).toString(),
-        sender: "You",
+        sender: "You" as const,
         content: emptyTextAreaValue,
         timestamp: getFormattedTime(),
       });
 
-      const client = new OpenAI({
-        apiKey: key,
-        dangerouslyAllowBrowser: true,
-      });
-
       const messages: ChatMessage[] = [];
-      // Always add system message for writer
-      messages.push({ role: "system", content: settings.writerPrompts[settings.writerModel] || '' });
       
-      ftChatMessages.forEach((message) => {
-        if (message.sender == "You") {
-          messages.push({ role: "user", content: message.content });
-        } else {
-          messages.push({ role: "assistant", content: message.content });
+      // Get system message from settings for the current model
+      messages.push({ 
+        role: "system", 
+        content: settings.writerPrompts[settings.writerModel] || '' 
+      });
+      
+      // Add all previous messages to the context
+      ftChatMessages.forEach(msg => {
+        if (msg.sender === "You") {
+          messages.push({ role: "user", content: msg.content });
+        } else if (msg.sender !== "System" && typeof msg.sender !== "string") {
+          messages.push({ role: "assistant", content: msg.content });
         }
       });
-
-      // Add the new user message
+      
+      // Add current user message
       messages.push({ role: "user", content: emptyTextAreaValue });
 
-      const response = await client.chat.completions.create(
-        {
-          messages: messages,
-          model: settings.writerModel, // Use model from settings
-          stream: true,
-        },
-        { maxRetries: 5, signal: abortControllerRefFT.current.signal }
-      );
+      // Get the token for the selected model
+      const modelToken = settings.modelTokens[settings.writerModel] || import.meta.env.VITE_OPEN_AI_KEY;
+      const response = await createChatCompletion(settings.writerModel, messages, modelToken);
 
-      let fullMessage = "";
+      let fullMessage = ""; // Store the full AI response
 
       for await (const chunk of response) {
-        if (
-          abortControllerRefFT.current &&
-          abortControllerRefFT.current.signal.aborted
-        ) {
-          break;
-        }
-        const content = chunk.choices[0]?.delta?.content;
-        if (content) {
-          setftChatMessages((prevChatMessages) => {
-            const updatedMessages = [...prevChatMessages];
-            let lastMessage = updatedMessages[updatedMessages.length - 1];
-
-            if (lastMessage?.sender == "You") {
-              updatedMessages.push({
-                id: (newId + 1).toString(),
-                sender: {
-                  name: "Session 1",
-                  username: new Date().toLocaleString(),
-                  avatar: "/static/images/avatar/3.jpg",
-                  online: true,
-                },
-                content: content,
-                timestamp: getFormattedTime(),
-              });
-            } else {
-              updatedMessages[updatedMessages.length - 1] = {
-                ...lastMessage,
-                content: lastMessage.content + content,
-              };
+        if (chunk.choices[0]?.delta?.content) {
+          fullMessage += chunk.choices[0].delta.content;
+          setftChatMessages((prevMessages) => {
+            const updatedMessages = [...prevMessages];
+            const lastMessage = updatedMessages[updatedMessages.length - 1];
+            if (lastMessage && typeof lastMessage.sender !== "string") {
+              lastMessage.content = fullMessage;
             }
-
             return updatedMessages;
           });
-
-          fullMessage += content;
         }
       }
 
-      handleNewFTMessage({
-        id: (newId + 2).toString(),
-        sender: {
-          name: "Session 1",
-          username: "12/23/2023 12:09:40 PM",
-          avatar: "/static/images/avatar/3.jpg",
-          online: true,
-        },
-        content: fullMessage,
-        timestamp: getFormattedTime(),
+      // Save the final state of messages after completion
+      setftChatMessages((prevMessages) => {
+        const finalMessages = [...prevMessages];
+        const lastMessage = finalMessages[finalMessages.length - 1];
+        if (lastMessage && typeof lastMessage.sender !== "string") {
+          lastMessage.content = fullMessage;
+        }
+        return finalMessages;
       });
-      setIsLoading(false);
+
       handleAbortRequestFT();
-    } catch (error: any) {
-      if (error.message === "Request was aborted.") {
+      setIsLoading(false);
+    } catch (error: unknown) {
+      if (error instanceof Error && error.message === "Request was aborted.") {
         console.warn("Request was aborted by the user.");
         return;
       }
-      alert("Error fetching AI response:");
+
       logError(error);
       setIsLoading(false);
       handleAbortRequestFT();
+      alert("Ooooops! Something went wrong !");
     }
   };
 
@@ -482,7 +453,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
                   spacing={2}
                   sx={{ flexDirection: isYou ? "row-reverse" : "row" }}
                 >
-                  {message.sender !== "You" && (
+                  {isUserProps(message.sender) && (
                     <AvatarWithStatus
                       online={message.sender.online}
                       src={message.sender.avatar}
@@ -515,6 +486,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
             setTextAreaValue={setTextAreaValue}
             onSubmit={handleCompletion}
             modelId={settings.researchModel}
+            modelName={getModelDisplayName(settings.researchModel)}
           />
         )}
       </Sheet>
@@ -631,6 +603,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
             setTextAreaValue={setEmptyTextAreaValue}
             onSubmit={handleCompletionFT}
             modelId={settings.writerModel}
+            modelName={getModelDisplayName(settings.writerModel)}
           />
         )}
       </Sheet>
