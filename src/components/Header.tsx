@@ -69,7 +69,7 @@ export default function Header() {
             .filter(model => model.status === 'succeeded' && model.fine_tuned_model)
             .filter(model => !existingModelIds.includes(model.fine_tuned_model!))
             .map(model => ({
-              label: `${model.fine_tuned_model}`,
+              label: `${model.user_provided_suffix}`,
               value: model.fine_tuned_model!,
               token: model.token // Store the token with the model option
             }));
