@@ -377,14 +377,14 @@ export default function MessagesPane(props: MessagesPaneProps) {
     <Box sx={{ 
       display: "flex", 
       gap: 1,
-      height: '100vh', // Fill entire viewport height
+      height: '95vh', // Fill entire viewport height
       overflow: 'hidden' // Prevent outer scrolling
     }}>
 
       {/* First Chat Box (Research) */}
       <Sheet
         sx={{
-          height: { xs: "calc(100dvh - var(--Header-height))", md: "100dvh" },
+          height: { xs: "calc(100dvh - var(--Header-height))", md: "100%" },
           display: "flex",
           flexDirection: "column",
           backgroundColor: "background.level1",
@@ -501,7 +501,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
       {/* Second Chat Box (Write) */}
       <Sheet
         sx={{
-          height: { xs: "calc(100dvh - var(--Header-height))", md: "100dvh" },
+          height: { xs: "calc(100dvh - var(--Header-height))", md: "100%" },
           display: "flex",
           flexDirection: "column",
           backgroundColor: "background.level1",
