@@ -87,7 +87,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
 
   // Load session state from local storage on component mount or when session changes
   React.useEffect(() => {
-    alert(`session_${sessionId}`)
+    
     const savedSession = localStorage.getItem(`chat_sessions`);
     
     if (savedSession) {

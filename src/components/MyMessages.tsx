@@ -40,7 +40,7 @@ export default function MyProfile() {
 
   // Save sessions whenever they change
   React.useEffect(() => {
-    alert("sessions changed");
+    
     if (sessions.length > 0) {
       ChatService.setChatSessions(sessions);
     }
