@@ -14,6 +14,11 @@ import StopIcon from "@mui/icons-material/Stop";
 import { getSettings } from "../services/SettingsService";
 import { getModelDisplayName } from "../constants";
 import { createChatCompletion } from "../services/OpenAIService";
+import IconButton from "@mui/joy/IconButton";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import SimpleEditor from "./SimpleEditor";
+import EditIcon from "@mui/icons-material/Edit";
 
 type MessagesPaneProps = {
   chat: ChatProps;
@@ -60,6 +65,13 @@ export default function MessagesPane(props: MessagesPaneProps) {
   const [emptyTextAreaValue, setEmptyTextAreaValue] = React.useState("");
   const abortControllerRef = useRef<AbortController>(null);
   const abortControllerRefFT = useRef<AbortController>(null);
+  
+  // Add state to track collapsed status of each panel
+  const [researchCollapsed, setResearchCollapsed] = React.useState(true);
+  const [writerCollapsed, setWriterCollapsed] = React.useState(true);
+  const [editorContent, setEditorContent] = React.useState("");
+  // Track if editor is visible
+  const [editorVisible, setEditorVisible] = React.useState(true);
 
   // Get current settings and update when they change
   const [settings, setSettings] = React.useState(getSettings());
@@ -373,6 +385,14 @@ export default function MessagesPane(props: MessagesPaneProps) {
     }
   };
 
+  // Effect to expand collapsed panels when editor is closed
+  React.useEffect(() => {
+    if (!editorVisible) {
+      setResearchCollapsed(false);
+      setWriterCollapsed(false);
+    }
+  }, [editorVisible]);
+
   return (
     <Box sx={{ 
       display: "flex", 
@@ -380,16 +400,17 @@ export default function MessagesPane(props: MessagesPaneProps) {
       height: '95vh', // Fill entire viewport height
       overflow: 'hidden' // Prevent outer scrolling
     }}>
-
       {/* First Chat Box (Research) */}
       <Sheet
         sx={{
-          height: { xs: "calc(100dvh - var(--Header-height))", md: "100%" },
+          height: "100%",
           display: "flex",
           flexDirection: "column",
           backgroundColor: "background.level1",
-          width: "50%",
+          width: researchCollapsed ? "60px" : (editorVisible ? "300px" : "50%"), // Take 50% width when editor is hidden
           overflow: 'hidden', // Prevent sheet from scrolling
+          transition: 'width 0.3s ease', // Add smooth transition
+          position: 'relative',
         }}
       >
         <Stack
@@ -401,112 +422,158 @@ export default function MessagesPane(props: MessagesPaneProps) {
             borderBottom: "1px solid",
             borderColor: "divider",
             backgroundColor: "background.body",
+            alignItems: "center",
           }}
         >
           <Stack
             direction="row"
             spacing={{ xs: 1, md: 2 }}
-            sx={{ alignItems: "center" }}
+            sx={{ 
+              alignItems: "center",
+              ml: researchCollapsed ? 0 : 0 // Add negative margin when collapsed
+            }}
           >
             <div>
-              <Typography
-                component="h2"
-                noWrap
-                sx={{ fontWeight: "lg", fontSize: "lg" }}
-              >
-                Research
-              </Typography>
-              <Typography level="body-sm" color="neutral">
-                {getModelDisplayName(settings.researchModel)}
-              </Typography>
+              {!researchCollapsed ? (
+                <>
+                  <Typography
+                    component="h2"
+                    noWrap
+                    sx={{ fontWeight: "lg", fontSize: "lg" }}
+                  >
+                    Research
+                  </Typography>
+                  <Typography level="body-sm" color="neutral">
+                    {getModelDisplayName(settings.researchModel)}
+                  </Typography>
+                </>
+              ) : (
+                <Typography
+                  sx={{
+                    fontSize: '18px',
+                    fontWeight: 'bold',
+                    color: 'primary.main',
+                    letterSpacing: '1px',
+                    padding: '5px',
+                    ml: -2, // Move text more to the left
+                  }}
+                >
+                  R
+                </Typography>
+              )}
             </div>
           </Stack>
+          <Stack direction="row" spacing={1}>
+            <IconButton
+              size="sm"
+              variant="outlined"
+              color="primary"
+              sx={{
+                borderRadius: '50%',
+                width: '30px',
+                height: '30px',
+                mr: researchCollapsed ? -1 : 0, // Adjust margin when collapsed
+                '&:hover': {
+                  backgroundColor: 'primary.100'
+                }
+              }}
+              onClick={() => setResearchCollapsed(!researchCollapsed)}
+            >
+              {researchCollapsed ? <ExpandMoreIcon /> : <ExpandLessIcon />}
+            </IconButton>
+          </Stack>
         </Stack>
-        <Box
-          sx={{
-            display: "flex",
-            flex: 1,
-            minHeight: 0,
-            px: 2,
-            py: 3,
-            overflowY: "auto", // Changed from scroll to auto
-            flexDirection: "column-reverse",
-          }}
-        >
-          {(!chatMessages || chatMessages.length === 0) && (
+        {!researchCollapsed && (
+          <>
             <Box
               sx={{
-                position: "absolute",
-                top: "50%",
-                left: "50%",
-                transform: "translate(-50%, -50%)",
-                color: "gray",
-                fontSize: "15px",
-                fontWeight: "bold",
-                textAlign: "center",
+                display: "flex",
+                flex: 1,
+                minHeight: 0,
+                px: 2,
+                py: 3,
+                overflowY: "auto", // Changed from scroll to auto
+                flexDirection: "column-reverse",
               }}
             >
-              Call Transcript → Email Newsletter <br />
-              Step 1: Paste the call transcript, then **extract key stories**.
-            </Box>
-          )}
-          <Stack spacing={2} sx={{ justifyContent: "flex-end" }}>
-            {chatMessages && chatMessages.map((message: MessageProps, index: number) => {
-              const isYou = message.sender === "You";
-              return (
-                <Stack
-                  key={index}
-                  direction="row"
-                  spacing={2}
-                  sx={{ flexDirection: isYou ? "row-reverse" : "row" }}
+              {(!chatMessages || chatMessages.length === 0) && (
+                <Box
+                  sx={{
+                    position: "absolute",
+                    top: "50%",
+                    left: "50%",
+                    transform: "translate(-50%, -50%)",
+                    color: "gray",
+                    fontSize: "15px",
+                    fontWeight: "bold",
+                    textAlign: "center",
+                  }}
                 >
-                  {isUserProps(message.sender) && (
-                    <AvatarWithStatus
-                      online={message.sender.online}
-                      src={message.sender.avatar}
-                    />
-                  )}
-                  <ChatBubble
-                    
-                    {...message}
-                  />
-                </Stack>
-              );
-            })}
-          </Stack>
-        </Box>
-        {/* Conditionally render Stop button or MessageInput */}
-        {abortControllerRef.current &&
-        !abortControllerRef.current.signal.aborted ? (
-          <Button
-            size="sm"
-            color="danger"
-            sx={{ alignSelf: "center", borderRadius: "sm", mb: 2 }} // Add margin bottom (mb)
-            endDecorator={<StopIcon />}
-            onClick={handleAbortRequest}
-          >
-            Stop
-          </Button> // Show Stop button if abortController exists
-        ) : (
-          <MessageInput
-            textAreaValue={textAreaValue}
-            setTextAreaValue={setTextAreaValue}
-            onSubmit={handleCompletion}
-            modelId={settings.researchModel}
-            modelName={getModelDisplayName(settings.researchModel)}
-          />
+                  Call Transcript → Email Newsletter <br />
+                  Step 1: Paste the call transcript, then **extract key stories**.
+                </Box>
+              )}
+              <Stack spacing={2} sx={{ justifyContent: "flex-end" }}>
+                {chatMessages && chatMessages.map((message: MessageProps, index: number) => {
+                  const isYou = message.sender === "You";
+                  return (
+                    <Stack
+                      key={index}
+                      direction="row"
+                      spacing={2}
+                      sx={{ flexDirection: isYou ? "row-reverse" : "row" }}
+                    >
+                      {isUserProps(message.sender) && (
+                        <AvatarWithStatus
+                          online={message.sender.online}
+                          src={message.sender.avatar}
+                        />
+                      )}
+                      <ChatBubble
+                        
+                        {...message}
+                      />
+                    </Stack>
+                  );
+                })}
+              </Stack>
+            </Box>
+            {/* Conditionally render Stop button or MessageInput */}
+            {abortControllerRef.current &&
+            !abortControllerRef.current.signal.aborted ? (
+              <Button
+                size="sm"
+                color="danger"
+                sx={{ alignSelf: "center", borderRadius: "sm", mb: 2 }} // Add margin bottom (mb)
+                endDecorator={<StopIcon />}
+                onClick={handleAbortRequest}
+              >
+                Stop
+              </Button> // Show Stop button if abortController exists
+            ) : (
+              <MessageInput
+                textAreaValue={textAreaValue}
+                setTextAreaValue={setTextAreaValue}
+                onSubmit={handleCompletion}
+                modelId={settings.researchModel}
+                modelName={getModelDisplayName(settings.researchModel)}
+              />
+            )}
+          </>
         )}
       </Sheet>
 
       {/* Second Chat Box (Write) */}
       <Sheet
         sx={{
-          height: { xs: "calc(100dvh - var(--Header-height))", md: "100%" },
+          height: "100%",
           display: "flex",
           flexDirection: "column",
           backgroundColor: "background.level1",
-          width: "50%",
+          width: writerCollapsed ? "60px" : (editorVisible ? "300px" : "50%"), // Take 50% width when editor is hidden
           overflow: 'hidden', // Prevent sheet from scrolling
+          transition: 'width 0.3s ease', // Add smooth transition
+          position: 'relative',
         }}
       >
         <Stack
@@ -518,102 +585,187 @@ export default function MessagesPane(props: MessagesPaneProps) {
             borderBottom: "1px solid",
             borderColor: "divider",
             backgroundColor: "background.body",
+            alignItems: "center",
           }}
         >
           <Stack
             direction="row"
             spacing={{ xs: 1, md: 2 }}
-            sx={{ alignItems: "center" }}
+            sx={{ 
+              alignItems: "center",
+              ml: writerCollapsed ? 0 : 0 // Add negative margin when collapsed
+            }}
           >
             <div>
-              <Typography
-                component="h2"
-                noWrap
-                sx={{ fontWeight: "lg", fontSize: "lg" }}
-              >
-                Write
-              </Typography>
-              <Typography level="body-sm" color="neutral">
-                {getModelDisplayName(settings.writerModel)}
-              </Typography>
+              {!writerCollapsed ? (
+                <>
+                  <Typography
+                    component="h2"
+                    noWrap
+                    sx={{ fontWeight: "lg", fontSize: "lg" }}
+                  >
+                    Write
+                  </Typography>
+                  <Typography level="body-sm" color="neutral">
+                    {getModelDisplayName(settings.writerModel)}
+                  </Typography>
+                </>
+              ) : (
+                <Typography
+                  sx={{
+                    fontSize: '18px',
+                    fontWeight: 'bold',
+                    color: 'primary.main',
+                    letterSpacing: '1px',
+                    padding: '5px',
+                    ml: -2, // Move text more to the left
+                  }}
+                >
+                  W
+                </Typography>
+              )}
             </div>
           </Stack>
+          <Stack direction="row" spacing={1}>
+            {!editorVisible && (
+              <IconButton
+                size="sm"
+                variant="outlined"
+                color="primary"
+                sx={{
+                  borderRadius: '50%',
+                  width: '30px',
+                  height: '30px',
+                  '&:hover': {
+                    backgroundColor: 'primary.100'
+                  }
+                }}
+                onClick={() => setEditorVisible(true)}
+              >
+                <EditIcon fontSize="small" />
+              </IconButton>
+            )}
+            <IconButton
+              size="sm"
+              variant="outlined"
+              color="primary"
+              sx={{
+                borderRadius: '50%',
+                width: '30px',
+                height: '30px',
+                mr: writerCollapsed ? -1 : 0, // Adjust margin when collapsed
+                '&:hover': {
+                  backgroundColor: 'primary.100'
+                }
+              }}
+              onClick={() => setWriterCollapsed(!writerCollapsed)}
+            >
+              {writerCollapsed ? <ExpandMoreIcon /> : <ExpandLessIcon />}
+            </IconButton>
+          </Stack>
         </Stack>
-        <Box
-          sx={{
-            display: "flex",
-            flex: 1,
-            minHeight: 0,
-            px: 2,
-            py: 3,
-            overflowY: "auto", // Changed from scroll to auto
-            flexDirection: "column-reverse",
-            position: "relative",
-          }}
-        >
-          {(!ftChatMessages || ftChatMessages.length === 0) && (
+        {!writerCollapsed && (
+          <>
             <Box
               sx={{
-                position: "absolute",
-                top: "50%",
-                left: "50%",
-                transform: "translate(-50%, -50%)",
-                color: "gray",
-                fontSize: "15px",
-                fontWeight: "bold",
-                textAlign: "center",
+                display: "flex",
+                flex: 1,
+                minHeight: 0,
+                px: 2,
+                py: 3,
+                overflowY: "auto", // Changed from scroll to auto
+                flexDirection: "column-reverse",
+                position: "relative",
               }}
             >
-              Step 2: Use the extracted info to generate and refine your
-              newsletter.
+              {(!ftChatMessages || ftChatMessages.length === 0) && (
+                <Box
+                  sx={{
+                    position: "absolute",
+                    top: "50%",
+                    left: "50%",
+                    transform: "translate(-50%, -50%)",
+                    color: "gray",
+                    fontSize: "15px",
+                    fontWeight: "bold",
+                    textAlign: "center",
+                  }}
+                >
+                  Step 2: Use the extracted info to generate and refine your
+                  newsletter.
+                </Box>
+              )}
+              <Stack spacing={2} sx={{ justifyContent: "flex-end" }}>
+                {ftChatMessages &&
+                  ftChatMessages.map((message: MessageProps, index: number) => {
+                    const isYouFT = message.sender === "You";
+                    return (
+                      <Stack 
+                        key={index} 
+                        direction="row" 
+                        spacing={2}
+                        sx={{ 
+                          flexDirection: isYouFT ? "row-reverse" : "row",
+                          justifyContent: isYouFT ? "flex-start" : "flex-start"
+                        }}
+                      >
+                        <ChatBubble
+                        
+                          {...message}
+                        />
+                      </Stack>
+                    );
+                  })}
+              </Stack>
             </Box>
-          )}
-          <Stack spacing={2} sx={{ justifyContent: "flex-end" }}>
-            {ftChatMessages &&
-              ftChatMessages.map((message: MessageProps, index: number) => {
-                const isYouFT = message.sender === "You";
-                return (
-                  <Stack 
-                    key={index} 
-                    direction="row" 
-                    spacing={2}
-                    sx={{ 
-                      flexDirection: isYouFT ? "row-reverse" : "row",
-                      justifyContent: isYouFT ? "flex-start" : "flex-start"
-                    }}
-                  >
-                    <ChatBubble
-                    
-                      {...message}
-                    />
-                  </Stack>
-                );
-              })}
-          </Stack>
-        </Box>
 
-        {/* Message input always stays at the bottom */}
-        {abortControllerRefFT.current &&
-        !abortControllerRefFT.current.signal.aborted ? (
-          <Button
-            size="sm"
-            color="danger"
-            sx={{ alignSelf: "center", borderRadius: "sm", mb: 2 }} // Add margin bottom (mb)
-            endDecorator={<StopIcon />}
-            onClick={handleAbortRequestFT}
-          >
-            Stop
-          </Button> // Show Stop button if abortController exists
-        ) : (
-          <MessageInput
-            textAreaValue={emptyTextAreaValue}
-            setTextAreaValue={setEmptyTextAreaValue}
-            onSubmit={handleCompletionFT}
-            modelId={settings.writerModel}
-            modelName={getModelDisplayName(settings.writerModel)}
-          />
+            {/* Message input always stays at the bottom */}
+            {abortControllerRefFT.current &&
+            !abortControllerRefFT.current.signal.aborted ? (
+              <Button
+                size="sm"
+                color="danger"
+                sx={{ alignSelf: "center", borderRadius: "sm", mb: 2 }} // Add margin bottom (mb)
+                endDecorator={<StopIcon />}
+                onClick={handleAbortRequestFT}
+              >
+                Stop
+              </Button> // Show Stop button if abortController exists
+            ) : (
+              <MessageInput
+                textAreaValue={emptyTextAreaValue}
+                setTextAreaValue={setEmptyTextAreaValue}
+                onSubmit={handleCompletionFT}
+                modelId={settings.writerModel}
+                modelName={getModelDisplayName(settings.writerModel)}
+              />
+            )}
+          </>
         )}
       </Sheet>
+
+      {/* Editor component taking most of the space */}
+      {editorVisible && (
+        <Sheet
+          sx={{
+            height: "100%",
+            display: "flex",
+            flexDirection: "column",
+            backgroundColor: "background.level1",
+            flex: 1,
+            overflow: 'hidden', // Prevent sheet from scrolling
+            mt: 1, // Add top margin
+          }}
+        >
+          <Box sx={{ flex: 1, overflow: 'auto' }}>
+            <SimpleEditor 
+              initialContent={editorContent} 
+              onSave={(content) => setEditorContent(content)}
+              onClose={() => setEditorVisible(false)}
+            />
+          </Box>
+        </Sheet>
+      )}
     </Box>
   );
 }

@@ -143,7 +143,7 @@ export default function MyProfile() {
         display: "grid",
         gridTemplateColumns: {
           xs: "1fr",
-          sm: "minmax(min-content, min(30%, 400px)) 1fr",
+          sm: "minmax(min-content, min(25%, 300px)) 1fr",
         },
       }}
     >

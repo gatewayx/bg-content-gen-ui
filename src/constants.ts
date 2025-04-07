@@ -101,13 +101,13 @@ export const getModelDisplayName = (modelId: string, userProvidedSuffix?: string
   }
   // For unknown models, use the user_provided_suffix as the label
   // If not provided, get it from the second-to-last part of the model ID
-  const parts = modelId.split(':');
+  const parts = modelId?.split(':');
   const suffix = userProvidedSuffix || (parts.length >= 2 ? parts[parts.length - 2] : modelId);
   return `${suffix}`;
 };
 
 // List of tokens to fetch models for selection
-export const MODEL_FETCH_TOKENS = import.meta.env.VITE_OPEN_AI_KEYS.split(',');
+export const MODEL_FETCH_TOKENS = import.meta.env.VITE_OPEN_AI_KEYS?.split(',') || [];
 
 // API Token mappings for different models
 export interface ApiTokenMapping {
