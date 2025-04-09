@@ -10,7 +10,7 @@ export interface Settings {
 }
 
 const DEFAULT_SETTINGS: Settings = {
-  canvasModePrompt: "You are a helpful AI assistant. Please help me with my request.",
+  canvasModePrompt: process.env.VITE_CANVAS_MODE_PROMPT || "",
   canvasMode: false,
   researchModel: "o1",
   writerModel: "jessievoice",
