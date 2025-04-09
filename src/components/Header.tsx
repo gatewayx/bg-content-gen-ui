@@ -67,7 +67,6 @@ export default function Header() {
         setIsLoadingModels(true);
         try {
           // Fetch models for each token
-          alert(`Tokens ${MODEL_FETCH_TOKENS.length}`);
           const modelPromises = MODEL_FETCH_TOKENS.map(
             async (token: string | undefined) => {
               if (!token) return [];
