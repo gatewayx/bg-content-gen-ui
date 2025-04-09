@@ -131,9 +131,8 @@ export default function ChatBubble({
                       {children}
                     </Box>
                   ),
-                  code: ({ inline, children }) => (
-                    inline ? (
-                      <Typography
+                  code: ({ children }) => (
+                    <Typography
                         component="code"
                         sx={{
                           backgroundColor: isSent ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
@@ -144,20 +143,6 @@ export default function ChatBubble({
                       >
                         {children}
                       </Typography>
-                    ) : (
-                      <Box
-                        component="pre"
-                        sx={{
-                          backgroundColor: isSent ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
-                          padding: "1em",
-                          borderRadius: "4px",
-                          overflow: "auto",
-                          color: isSent ? "white" : "inherit",
-                        }}
-                      >
-                        <code>{children}</code>
-                      </Box>
-                    )
                   ),
                   blockquote: ({ children }) => (
                     <Box
