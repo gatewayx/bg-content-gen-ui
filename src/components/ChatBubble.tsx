@@ -84,10 +84,7 @@ export default function ChatBubble({
             __html: sanitizeHTML(content) 
           }}
           style={{
-            color: isSent ? "white" : "inherit",
-            '& a': {
-              color: isSent ? "white" : "inherit",
-            }
+            color: isSent ? "white" : "inherit"
           }}
         />
       );

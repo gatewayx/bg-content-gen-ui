@@ -191,6 +191,8 @@ export default function Header() {
   // Function to handle settings update
   const handleUpdateSettings = () => {
     saveSettings({
+      canvasModePrompt: getSettings().canvasModePrompt,
+      // canvasMode: getSettings().canvasMode,
       researchModel,
       writerModel,
       researchPrompts,

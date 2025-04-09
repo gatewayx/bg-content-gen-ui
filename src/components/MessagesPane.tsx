@@ -19,6 +19,7 @@ import CloseFullscreenIcon from '@mui/icons-material/CloseFullscreen';
 import OpenInFullIcon from '@mui/icons-material/OpenInFull';
 import SimpleEditor from "./SimpleEditor";
 import EditIcon from "@mui/icons-material/Edit";
+import Link from "@mui/joy/Link";
 // Import VITE_CANVAS_MODE_PROMPT from environment variables
 const VITE_CANVAS_MODE_PROMPT = import.meta.env.VITE_CANVAS_MODE_PROMPT || '';
 
@@ -454,7 +455,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
           display: "flex",
           flexDirection: "column",
           backgroundColor: "background.level1",
-          width: researchCollapsed ? "60px" : (editorVisible ? "300px" : "50%"), // Take 50% width when editor is hidden
+          width: researchCollapsed ? "60px" : (editorVisible ? "550px" : "50%"), // Take 50% width when editor is hidden
           overflow: 'hidden', // Prevent sheet from scrolling
           transition: 'width 0.3s ease', // Add smooth transition
           position: 'relative',
@@ -556,8 +557,38 @@ export default function MessagesPane(props: MessagesPaneProps) {
                     textAlign: "center",
                   }}
                 >
-                  Call Transcript → Email Newsletter <br />
-                  Step 1: Paste the call transcript, then **extract key stories**.
+                  <Typography level="h4" sx={{ mb: 1 }}>
+                    Xpress
+                    <Typography
+                      component="span"
+                      sx={{
+                        fontSize: "0.7em",
+                        verticalAlign: "sub",
+                        ml: 0.5,
+                        color: "neutral.500",
+                      }}
+                    >
+                      by{" "}
+                      <Link
+                        href="https://www.gateway.xyz/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        sx={{
+                          color: "primary.500",
+                          textDecoration: "none",
+                          "&:hover": {
+                            textDecoration: "underline",
+                          },
+                        }}
+                      >
+                        Gateway X
+                      </Link>
+                    </Typography>
+                  </Typography>
+                  <Typography level="body-sm">
+                    Call Transcript → Email Newsletter <br />
+                    Step 1: Paste the call transcript, then **extract key stories**.
+                  </Typography>
                 </Box>
               )}
               <Stack spacing={2} sx={{ justifyContent: "flex-end" }}>
