@@ -1,26 +1,24 @@
 export interface Settings {
-  researchModel: string;
-  writerModel: string;
-  researchPrompts: Record<string, string>;
-  writerPrompts: Record<string, string>;
-  modelTokens: Record<string, string>;
+  canvasModePrompt: string;
+  // Add other settings as needed
 }
 
 const DEFAULT_SETTINGS: Settings = {
-  researchModel: "o1",
-  writerModel: "ft:gpt-4o-2024-08-06:gateway-x:jp-linkedin-top-30-likes-2025-03-10:B9jJFWXa",
-  researchPrompts: {},
-  writerPrompts: {},
-  modelTokens: {},
+  canvasModePrompt: "You are a helpful AI assistant. Please help me with my request.",
 };
 
-export function getSettings(): Settings {
-  const savedSettings = localStorage.getItem('settings');
-  if (savedSettings) {
-    return JSON.parse(savedSettings);
+export const getSettings = (): Settings => {
+  const storedSettings = localStorage.getItem('settings');
+  if (storedSettings) {
+    try {
+      return JSON.parse(storedSettings);
+    } catch (error) {
+      console.error('Error parsing settings:', error);
+      return DEFAULT_SETTINGS;
+    }
   }
   return DEFAULT_SETTINGS;
-}
+};
 
 export function saveSettings(settings: Settings): void {
   localStorage.setItem('settings', JSON.stringify(settings));

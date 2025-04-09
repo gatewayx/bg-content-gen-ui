@@ -6,33 +6,59 @@ import Typography from "@mui/joy/Typography";
 import BugReportIcon from "@mui/icons-material/BugReport";
 import SettingsIcon from "@mui/icons-material/Settings";
 import { downloadLogs } from "../services/LoggerService";
-import { ModalClose, Drawer, FormControl, FormLabel, Select, Option, Textarea, Divider, Button, Box } from "@mui/joy";
-import { MODEL_OPTIONS, WRITE_AI_SYSTEM_PROMPT, DEFAULT_MODELS, AI_MODELS, MODEL_FETCH_TOKENS } from "../constants";
+import {
+  ModalClose,
+  Drawer,
+  FormControl,
+  FormLabel,
+  Select,
+  Option,
+  Textarea,
+  Divider,
+  Button,
+  Box,
+} from "@mui/joy";
+import {
+  MODEL_OPTIONS,
+  WRITE_AI_SYSTEM_PROMPT,
+  DEFAULT_MODELS,
+  AI_MODELS,
+  MODEL_FETCH_TOKENS,
+} from "../constants";
 import { getSettings, saveSettings } from "../services/SettingsService";
-import RestartAltIcon from '@mui/icons-material/RestartAlt';
+import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import { fetchFineTunedModels } from "../services/OpenAIService";
-import CircularProgress from '@mui/joy/CircularProgress';
+import CircularProgress from "@mui/joy/CircularProgress";
 
 type ModelValue = string;
 
 type ModelOption = {
   label: string;
-  value: ModelValue | 'divider';
+  value: ModelValue | "divider";
   disabled?: boolean;
   token?: string;
 };
 
 export default function Header() {
   const [open, setOpen] = React.useState(false);
-  const [modelOptions, setModelOptions] = React.useState<ModelOption[]>(MODEL_OPTIONS);
+  const [modelOptions, setModelOptions] =
+    React.useState<ModelOption[]>(MODEL_OPTIONS);
   const [isLoadingModels, setIsLoadingModels] = React.useState(false);
-  
+
   // Initialize state from settings service
   const initialSettings = React.useMemo(() => getSettings(), []);
-  const [researchModel, setResearchModel] = React.useState<ModelValue>(initialSettings.researchModel);
-  const [writerModel, setWriterModel] = React.useState<ModelValue>(initialSettings.writerModel);
-  const [researchPrompts, setResearchPrompts] = React.useState(initialSettings.researchPrompts);
-  const [writerPrompts, setWriterPrompts] = React.useState(initialSettings.writerPrompts);
+  const [researchModel, setResearchModel] = React.useState<ModelValue>(
+    initialSettings.researchModel
+  );
+  const [writerModel, setWriterModel] = React.useState<ModelValue>(
+    initialSettings.writerModel
+  );
+  const [researchPrompts, setResearchPrompts] = React.useState(
+    initialSettings.researchPrompts
+  );
+  const [writerPrompts, setWriterPrompts] = React.useState(
+    initialSettings.writerPrompts
+  );
 
   // Fetch fine-tuned models when drawer opens
   React.useEffect(() => {
@@ -41,43 +67,50 @@ export default function Header() {
         setIsLoadingModels(true);
         try {
           // Fetch models for each token
-          const modelPromises = MODEL_FETCH_TOKENS.map(async (token: string | undefined) => {
-            if (!token) return [];
-            try {
-              const models = await fetchFineTunedModels(token);
-              // Add token information to each model
-              return models.map(model => ({
-                ...model,
-                token
-              }));
-            } catch (error) {
-              console.error(`Error fetching models for token:`, error);
-              return [];
+          alert(`Tokens ${MODEL_FETCH_TOKENS.length}`);
+          const modelPromises = MODEL_FETCH_TOKENS.map(
+            async (token: string | undefined) => {
+              if (!token) return [];
+              try {
+                const models = await fetchFineTunedModels(token);
+                // Add token information to each model
+                return models.map((model) => ({
+                  ...model,
+                  token,
+                }));
+              } catch (error) {
+                console.error(`Error fetching models for token:`, error);
+                return [];
+              }
             }
-          });
+          );
 
           const allModelResults = await Promise.all(modelPromises);
-          
+
           // Get existing model IDs from constants
-          const existingModelIds:string[] = Object.values(AI_MODELS);
-          
+          const existingModelIds: string[] = Object.values(AI_MODELS);
+
           // Combine all fine-tuned models
           const allModels = allModelResults.flat();
-          
+
           // Filter out models that are already in our constants
           const newModels: ModelOption[] = allModels
-            .filter(model => model.status === 'succeeded' && model.fine_tuned_model)
-            .filter(model => !existingModelIds.includes(model.fine_tuned_model!))
-            .map(model => ({
+            .filter(
+              (model) => model.status === "succeeded" && model.fine_tuned_model
+            )
+            .filter(
+              (model) => !existingModelIds.includes(model.fine_tuned_model!)
+            )
+            .map((model) => ({
               label: `${model.user_provided_suffix}`,
               value: model.fine_tuned_model!,
-              token: model.token // Store the token with the model option
+              token: model.token, // Store the token with the model option
             }));
 
           // Combine with existing options
           setModelOptions([
-            ...MODEL_OPTIONS.filter(opt => opt.value !== 'divider'),
-            ...newModels
+            ...MODEL_OPTIONS.filter((opt) => opt.value !== "divider"),
+            ...newModels,
           ]);
 
           // Update settings with model tokens
@@ -93,11 +126,11 @@ export default function Header() {
             ...settings,
             modelTokens: {
               ...settings.modelTokens,
-              ...modelTokens
-            }
+              ...modelTokens,
+            },
           });
         } catch (error) {
-          console.error('Error fetching models:', error);
+          console.error("Error fetching models:", error);
         } finally {
           setIsLoadingModels(false);
         }
@@ -108,50 +141,50 @@ export default function Header() {
   }, [open]);
 
   // Get current prompts based on selected models
-  const currentResearchPrompt = researchPrompts[researchModel] || '';
-  const currentWriterPrompt = writerPrompts[writerModel] || '';  // Don't fall back to default prompt
+  const currentResearchPrompt = researchPrompts[researchModel] || "";
+  const currentWriterPrompt = writerPrompts[writerModel] || ""; // Don't fall back to default prompt
 
   // Handle model changes
-  const handleResearchModelChange = (value: ModelValue | 'divider') => {
+  const handleResearchModelChange = (value: ModelValue | "divider") => {
     // Ignore if divider is selected
-    if (value === 'divider') return;
-    
+    if (value === "divider") return;
+
     setResearchModel(value);
     // Initialize empty prompt for new model if it doesn't exist
     if (!researchPrompts[value]) {
-      setResearchPrompts(prev => ({
+      setResearchPrompts((prev) => ({
         ...prev,
-        [value]: '' // Allow empty prompt
+        [value]: "", // Allow empty prompt
       }));
     }
   };
 
-  const handleWriterModelChange = (value: ModelValue | 'divider') => {
+  const handleWriterModelChange = (value: ModelValue | "divider") => {
     // Ignore if divider is selected
-    if (value === 'divider') return;
-    
+    if (value === "divider") return;
+
     setWriterModel(value);
     // Initialize with empty or default prompt for new model
     if (!writerPrompts[value]) {
-      setWriterPrompts(prev => ({
+      setWriterPrompts((prev) => ({
         ...prev,
-        [value]: value === DEFAULT_MODELS.WRITER ? WRITE_AI_SYSTEM_PROMPT : '' // Only use default for Jesse Voice model
+        [value]: value === DEFAULT_MODELS.WRITER ? WRITE_AI_SYSTEM_PROMPT : "", // Only use default for Jesse Voice model
       }));
     }
   };
 
   // Handle prompt changes
   const handleResearchPromptChange = (value: string) => {
-    setResearchPrompts(prev => ({
+    setResearchPrompts((prev) => ({
       ...prev,
-      [researchModel]: value
+      [researchModel]: value,
     }));
   };
 
   const handleWriterPromptChange = (value: string) => {
-    setWriterPrompts(prev => ({
+    setWriterPrompts((prev) => ({
       ...prev,
-      [writerModel]: value  // Simply save the value as-is, no default fallback
+      [writerModel]: value, // Simply save the value as-is, no default fallback
     }));
   };
 
@@ -162,7 +195,8 @@ export default function Header() {
       writerModel,
       researchPrompts,
       writerPrompts,
-      modelTokens: getSettings().modelTokens // Preserve existing model tokens
+      modelTokens: getSettings().modelTokens, // Preserve existing model tokens,
+      canvasMode:JSON.parse(localStorage.getItem('canvasMode') || 'false')
     });
     setOpen(false);
   };
@@ -200,14 +234,14 @@ export default function Header() {
         <Typography component="h5" sx={{ fontWeight: "bold", color: "white" }}>
           Transcript to Newsletter App
         </Typography>
-        
-        <div style={{ display: 'flex', gap: '8px' }}>
+
+        <div style={{ display: "flex", gap: "8px" }}>
           <IconButton
             variant="plain"
             aria-label="settings"
             color="neutral"
             size="sm"
-            sx={{ display: { xs: "none", sm: "unset" }, color: 'white' }}
+            sx={{ display: { xs: "none", sm: "unset" }, color: "white" }}
             onClick={() => setOpen(true)}
           >
             <SettingsIcon />
@@ -219,7 +253,7 @@ export default function Header() {
             size="sm"
             sx={{ display: { xs: "none", sm: "unset" } }}
             onClick={() => {
-              downloadLogs()
+              downloadLogs();
             }}
           >
             <BugReportIcon />
@@ -236,14 +270,14 @@ export default function Header() {
         slotProps={{
           content: {
             sx: {
-              bgcolor: 'background.surface',
+              bgcolor: "background.surface",
               p: 4,
-              boxShadow: 'lg',
-              width: '50vw',
+              boxShadow: "lg",
+              width: "50vw",
               zIndex: 9999,
-              display: 'flex',
-              flexDirection: 'column',
-              height: '100%'
+              display: "flex",
+              flexDirection: "column",
+              height: "100%",
             },
           },
           backdrop: {
@@ -254,24 +288,30 @@ export default function Header() {
         }}
       >
         <ModalClose />
-        <div style={{ flex: 1, overflow: 'auto' }}>
-          <Typography level="h3" sx={{ mb: 3, mt: 3 }}>Settings</Typography>
-          
+        <div style={{ flex: 1, overflow: "auto" }}>
+          <Typography level="h3" sx={{ mb: 3, mt: 3 }}>
+            Settings
+          </Typography>
+
           {/* Research Section */}
-          <Typography level="h4" sx={{ mb: 2 }}>Research Settings</Typography>
+          <Typography level="h4" sx={{ mb: 2 }}>
+            Research Settings
+          </Typography>
           <FormControl sx={{ mb: 2 }}>
             <FormLabel>Model</FormLabel>
-            <Box sx={{ position: 'relative' }}>
+            <Box sx={{ position: "relative" }}>
               <Select
                 value={researchModel}
-                onChange={(_, value) => handleResearchModelChange(value as ModelValue | 'divider')}
+                onChange={(_, value) =>
+                  handleResearchModelChange(value as ModelValue | "divider")
+                }
                 sx={{ mb: 2 }}
               >
                 {modelOptions.map((option) => (
-                  <Option 
-                    key={option.value} 
+                  <Option
+                    key={option.value}
                     value={option.value}
-                    disabled={option.value === 'divider'}
+                    disabled={option.value === "divider"}
                   >
                     {option.label}
                   </Option>
@@ -281,15 +321,15 @@ export default function Header() {
                 <CircularProgress
                   size="sm"
                   sx={{
-                    position: 'absolute',
+                    position: "absolute",
                     right: 8,
-                    top: '50%',
-                    transform: 'translateY(-50%)',
+                    top: "50%",
+                    transform: "translateY(-50%)",
                   }}
                 />
               )}
             </Box>
-            
+
             <FormLabel>System Prompt (Optional)</FormLabel>
             <Textarea
               minRows={4}
@@ -303,20 +343,24 @@ export default function Header() {
           <Divider sx={{ my: 4 }} />
 
           {/* Writer Section */}
-          <Typography level="h4" sx={{ mb: 2 }}>Writer Settings</Typography>
+          <Typography level="h4" sx={{ mb: 2 }}>
+            Writer Settings
+          </Typography>
           <FormControl sx={{ mb: 2 }}>
             <FormLabel>Model</FormLabel>
-            <Box sx={{ position: 'relative' }}>
+            <Box sx={{ position: "relative" }}>
               <Select
                 value={writerModel}
-                onChange={(_, value) => handleWriterModelChange(value as ModelValue | 'divider')}
+                onChange={(_, value) =>
+                  handleWriterModelChange(value as ModelValue | "divider")
+                }
                 sx={{ mb: 2 }}
               >
                 {modelOptions.map((option) => (
-                  <Option 
-                    key={option.value} 
+                  <Option
+                    key={option.value}
                     value={option.value}
-                    disabled={option.value === 'divider'}
+                    disabled={option.value === "divider"}
                   >
                     {option.label}
                   </Option>
@@ -326,10 +370,10 @@ export default function Header() {
                 <CircularProgress
                   size="sm"
                   sx={{
-                    position: 'absolute',
+                    position: "absolute",
                     right: 8,
-                    top: '50%',
-                    transform: 'translateY(-50%)',
+                    top: "50%",
+                    transform: "translateY(-50%)",
                   }}
                 />
               )}
@@ -337,7 +381,7 @@ export default function Header() {
           </FormControl>
 
           <FormLabel>System Prompt (Optional)</FormLabel>
-          <Box sx={{ position: 'relative' }}>
+          <Box sx={{ position: "relative" }}>
             <Textarea
               minRows={4}
               value={currentWriterPrompt}
@@ -350,11 +394,11 @@ export default function Header() {
               variant="plain"
               color="neutral"
               sx={{
-                position: 'absolute',
+                position: "absolute",
                 top: 8,
                 right: 8,
                 zIndex: 1,
-                bgcolor: 'background.surface',
+                bgcolor: "background.surface",
               }}
               onClick={() => handleWriterPromptChange(WRITE_AI_SYSTEM_PROMPT)}
               title="Reset to default prompt"
@@ -365,7 +409,7 @@ export default function Header() {
         </div>
 
         {/* Update Button */}
-        <Button 
+        <Button
           color="primary"
           size="lg"
           onClick={handleUpdateSettings}

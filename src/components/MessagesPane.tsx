@@ -15,10 +15,12 @@ import { getSettings } from "../services/SettingsService";
 import { getModelDisplayName } from "../constants";
 import { createChatCompletion } from "../services/OpenAIService";
 import IconButton from "@mui/joy/IconButton";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import CloseFullscreenIcon from '@mui/icons-material/CloseFullscreen';
+import OpenInFullIcon from '@mui/icons-material/OpenInFull';
 import SimpleEditor from "./SimpleEditor";
 import EditIcon from "@mui/icons-material/Edit";
+// Import VITE_CANVAS_MODE_PROMPT from environment variables
+const VITE_CANVAS_MODE_PROMPT = import.meta.env.VITE_CANVAS_MODE_PROMPT || '';
 
 type MessagesPaneProps = {
   chat: ChatProps;
@@ -71,7 +73,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
   const [writerCollapsed, setWriterCollapsed] = React.useState(true);
   const [editorContent, setEditorContent] = React.useState("");
   // Track if editor is visible
-  const [editorVisible, setEditorVisible] = React.useState(true);
+  const [editorVisible, setEditorVisible] = React.useState(false);
 
   // Get current settings and update when they change
   const [settings, setSettings] = React.useState(getSettings());
@@ -296,6 +298,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
           sender: "You" as const,
           content: emptyTextAreaValue,
           timestamp: getFormattedTime(),
+          canvasMode: editorVisible, // Set canvasMode based on editor visibility
         },
         {
           id: (newId + 2).toString(),
@@ -307,6 +310,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
           },
           content: "",
           timestamp: getFormattedTime(),
+          canvasMode: editorVisible, // Set canvasMode based on editor visibility
         },
       ];
 
@@ -322,22 +326,44 @@ export default function MessagesPane(props: MessagesPaneProps) {
       const messages: ChatMessage[] = [];
       
       // Get system message from settings for the current model
+      const canvasMode:boolean = JSON.parse(localStorage.getItem('canvasMode') || 'false');
+      let system = settings.writerPrompts[settings.writerModel] || '';
+
+      if (canvasMode) {
+        system = `${system} ${VITE_CANVAS_MODE_PROMPT}`;
+      }
+
       messages.push({ 
         role: "system", 
-        content: settings.writerPrompts[settings.writerModel] || '' 
+        content:system
       });
       
       // Add all previous messages to the context
       ftChatMessages.forEach(msg => {
         if (msg.sender === "You") {
-          messages.push({ role: "user", content: msg.content });
+          let content = msg.content;
+          
+          if (canvasMode) {
+            // Include both the user's message and current canvas content
+            content = `User Message: ${msg.content}\n\nCurrent Canvas Output:\n${editorContent}`;
+          }
+      
+          messages.push({ role: "user", content: content });
         } else if (msg.sender !== "System" && typeof msg.sender !== "string") {
           messages.push({ role: "assistant", content: msg.content });
         }
       });
       
       // Add current user message
-      messages.push({ role: "user", content: emptyTextAreaValue });
+      let currentMessage = emptyTextAreaValue;
+      if (canvasMode) {
+        currentMessage = `User Message: 
+        ${emptyTextAreaValue}
+        --------------------------
+        Current Canvas Output:
+        ${editorContent}`;
+      }
+      messages.push({ role: "user", content: currentMessage });
 
       // Get the token for the selected model
       const modelToken = settings.modelTokens[settings.writerModel] || import.meta.env.VITE_OPEN_AI_KEY;
@@ -365,11 +391,13 @@ export default function MessagesPane(props: MessagesPaneProps) {
         const lastMessage = finalMessages[finalMessages.length - 1];
         if (lastMessage && typeof lastMessage.sender !== "string") {
           lastMessage.content = fullMessage;
+          lastMessage.canvasMode = canvasMode; // Ensure canvasMode is set
         }
         handleNewFTMessage(lastMessage);
         return finalMessages;
       });
-
+      // Set the editor content to the full message
+      setEditorContent(fullMessage);
       handleAbortRequestFT();
       setIsLoading(false);
     } catch (error: unknown) {
@@ -385,12 +413,31 @@ export default function MessagesPane(props: MessagesPaneProps) {
     }
   };
 
+  // Function to handle opening editor with content
+  const handleOpenEditor = (content: string) => {
+    // If no specific content is provided, try to get the last message's content
+    if (!content && ftChatMessages.length > 0) {
+      const lastMessage = ftChatMessages[ftChatMessages.length - 1];
+      // Only use content if the message is not from "You"
+      if (lastMessage.sender !== "You") {
+        content = lastMessage.content;
+      }
+    }
+    
+    setEditorContent(content);
+    setEditorVisible(true);
+    // Collapse both panels when editor opens
+    setResearchCollapsed(true);
+    // setWriterCollapsed(true);
+  };
+
   // Effect to expand collapsed panels when editor is closed
   React.useEffect(() => {
     if (!editorVisible) {
       setResearchCollapsed(false);
       setWriterCollapsed(false);
     }
+    localStorage.setItem('canvasMode',JSON.stringify(editorVisible));
   }, [editorVisible]);
 
   return (
@@ -479,7 +526,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
               }}
               onClick={() => setResearchCollapsed(!researchCollapsed)}
             >
-              {researchCollapsed ? <ExpandMoreIcon /> : <ExpandLessIcon />}
+              {researchCollapsed ? <OpenInFullIcon /> : <CloseFullscreenIcon />}
             </IconButton>
           </Stack>
         </Stack>
@@ -570,7 +617,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
           display: "flex",
           flexDirection: "column",
           backgroundColor: "background.level1",
-          width: writerCollapsed ? "60px" : (editorVisible ? "300px" : "50%"), // Take 50% width when editor is hidden
+          width: writerCollapsed ? "120px" : (editorVisible ? "550px" : "50%"), // Take 50% width when editor is hidden
           overflow: 'hidden', // Prevent sheet from scrolling
           transition: 'width 0.3s ease', // Add smooth transition
           position: 'relative',
@@ -640,7 +687,9 @@ export default function MessagesPane(props: MessagesPaneProps) {
                     backgroundColor: 'primary.100'
                   }
                 }}
-                onClick={() => setEditorVisible(true)}
+                onClick={() => {
+                  handleOpenEditor('');
+                }}
               >
                 <EditIcon fontSize="small" />
               </IconButton>
@@ -660,7 +709,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
               }}
               onClick={() => setWriterCollapsed(!writerCollapsed)}
             >
-              {writerCollapsed ? <ExpandMoreIcon /> : <ExpandLessIcon />}
+              {writerCollapsed ? <OpenInFullIcon /> : <CloseFullscreenIcon />}
             </IconButton>
           </Stack>
         </Stack>
@@ -710,8 +759,8 @@ export default function MessagesPane(props: MessagesPaneProps) {
                         }}
                       >
                         <ChatBubble
-                        
                           {...message}
+                          onEdit={handleOpenEditor}
                         />
                       </Stack>
                     );
@@ -753,14 +802,18 @@ export default function MessagesPane(props: MessagesPaneProps) {
             flexDirection: "column",
             backgroundColor: "background.level1",
             flex: 1,
-            overflow: 'hidden', // Prevent sheet from scrolling
-            mt: 1, // Add top margin
+            overflow: 'hidden',
+            mt: 1,
+            width: writerCollapsed ? '70%' : '50%', // Adjust width based on writer collapse state
+            transition: 'width 0.3s ease', // Add smooth transition
           }}
         >
           <Box sx={{ flex: 1, overflow: 'auto' }}>
             <SimpleEditor 
               initialContent={editorContent} 
-              onSave={(content) => setEditorContent(content)}
+              onSave={(content) => {
+                setEditorContent(content);
+              }}
               onClose={() => setEditorVisible(false)}
             />
           </Box>

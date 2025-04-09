@@ -99,6 +99,10 @@ export const getModelDisplayName = (modelId: string, userProvidedSuffix?: string
   if (modelId in FT_MODEL_NAMES) {
     return FT_MODEL_NAMES[modelId as keyof typeof FT_MODEL_NAMES];
   }
+
+  if (!modelId) {
+    return 'N/A';
+  }
   // For unknown models, use the user_provided_suffix as the label
   // If not provided, get it from the second-to-last part of the model ID
   const parts = modelId?.split(':');

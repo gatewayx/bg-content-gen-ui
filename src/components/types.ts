@@ -11,6 +11,7 @@ export interface MessageProps {
   content: string;
   timestamp: string;
   unread?: boolean;
+  canvasMode?: boolean;
 }
 
 export interface ChatProps {

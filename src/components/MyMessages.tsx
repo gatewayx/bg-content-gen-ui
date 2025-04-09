@@ -6,6 +6,7 @@ import { ChatProps, MessageProps } from "../components/types";
 import { chats } from "../components/data";
 import ChatService from "../services/SessionService";
 import { logError } from "../services/LoggerService";
+import { useSettings } from "../contexts/SettingsContext";
 
 
 function getFormattedTime() {
@@ -22,6 +23,7 @@ function getFormattedTime() {
 }
 
 export default function MyProfile() {
+  const { settings } = useSettings();
   const [sessions, setSessions] = React.useState<ChatProps[]>([]);
   const [selectedChat, setSelectedChat] = React.useState<ChatProps | null>(null);
   const [isLoading,setIsLoading] = React.useState(false);
@@ -104,6 +106,8 @@ export default function MyProfile() {
 
   // Function to handle new message addition from child component
   const handleNewMessage = (newMessage: MessageProps) => {
+    // Only add canvas mode prompt to messages from the Research pane (right side)
+    // We don't add the prompt to messages from the Write pane (left side)
     setSessions((prevSessions) =>
       prevSessions.map((session) =>
         session.id === selectedChat?.id
@@ -119,6 +123,11 @@ export default function MyProfile() {
   };
 
   const handleNewFTMessage = (newFTMessage: MessageProps) => {
+    // Add canvas mode prompt to messages from the Write pane (left side)
+    if (settings.canvasModePrompt) {
+      newFTMessage.content = `${settings.canvasModePrompt}\n\n${newFTMessage.content}`;
+    }
+    
     setSessions((prevSessions) =>
       prevSessions.map((session) =>
         session.id === selectedChat?.id

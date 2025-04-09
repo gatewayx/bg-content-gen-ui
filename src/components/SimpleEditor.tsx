@@ -19,19 +19,17 @@ export default function SimpleEditor({ initialContent = "", onSave, onClose }: S
   const [content, setContent] = React.useState(initialContent);
   const editorRef = React.useRef<HTMLDivElement>(null);
 
-  // Function to handle saving content
-  const handleSave = () => {
-    if (editorRef.current && onSave) {
-      onSave(editorRef.current.innerHTML);
+  // Function to handle content changes
+  const handleContentChange = (e: React.FormEvent<HTMLDivElement>) => {
+    const newContent = e.currentTarget.innerHTML;
+    setContent(newContent);
+    if (onSave) {
+      onSave(newContent);
     }
   };
 
   // Function to handle closing
   const handleClose = () => {
-    if (editorRef.current && onSave) {
-      // Save content before closing
-      onSave(editorRef.current.innerHTML);
-    }
     if (onClose) {
       onClose();
     }
@@ -48,7 +46,11 @@ export default function SimpleEditor({ initialContent = "", onSave, onClose }: S
   const formatText = (command: string, value?: string) => {
     document.execCommand(command, false, value);
     if (editorRef.current) {
-      setContent(editorRef.current.innerHTML);
+      const newContent = editorRef.current.innerHTML;
+      setContent(newContent);
+      if (onSave) {
+        onSave(newContent);
+      }
     }
   };
 
@@ -101,7 +103,7 @@ export default function SimpleEditor({ initialContent = "", onSave, onClose }: S
         ref={editorRef}
         contentEditable
         suppressContentEditableWarning
-        onInput={(e) => setContent((e.target as HTMLDivElement).innerHTML)}
+        onInput={handleContentChange}
       />
     </Box>
   );
