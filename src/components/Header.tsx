@@ -29,6 +29,7 @@ import { getSettings, saveSettings } from "../services/SettingsService";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import { fetchFineTunedModels } from "../services/OpenAIService";
 import CircularProgress from "@mui/joy/CircularProgress";
+import Link from "@mui/joy/Link";
 
 type ModelValue = string;
 
@@ -233,7 +234,32 @@ export default function Header() {
 
         {/* Left Side - Title */}
         <Typography component="h5" sx={{ fontWeight: "bold", color: "white" }}>
-          Transcript to Newsletter App
+        Xpress
+                    <Typography
+                      component="span"
+                      sx={{
+                        fontSize: "0.7em",
+                        verticalAlign: "sub",
+                        ml: 0.5,
+                        color: "white",
+                      }}
+                    >
+                      by{" "}
+                      <Link
+                        href="https://www.gateway.xyz/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        sx={{
+                          color: "white",
+                          textDecoration: "none",
+                          "&:hover": {
+                            textDecoration: "underline",
+                          },
+                        }}
+                      >
+                        Gateway X
+                      </Link>
+                    </Typography>
         </Typography>
 
         <div style={{ display: "flex", gap: "8px" }}>

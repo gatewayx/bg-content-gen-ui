@@ -311,7 +311,6 @@ export default function MessagesPane(props: MessagesPaneProps) {
           },
           content: "",
           timestamp: getFormattedTime(),
-          canvasMode: editorVisible, // Set canvasMode based on editor visibility
         },
       ];
 
@@ -331,18 +330,20 @@ export default function MessagesPane(props: MessagesPaneProps) {
       let system = settings.writerPrompts[settings.writerModel] || '';
 
       if (canvasMode) {
-        system = `${system} ${VITE_CANVAS_MODE_PROMPT}`;
+        // Get canvas mode prompt from localStorage or use default
+        const canvasModePrompt = localStorage.getItem('canvasModePrompt') || VITE_CANVAS_MODE_PROMPT;
+        system = `${system}\n\n${canvasModePrompt}`;
       }
 
-
+      messages.push({ 
+        role: "system", 
+        content: system
+      });
       
       // Add all previous messages to the context
       ftChatMessages.forEach(msg => {
         if (msg.sender === "You") {
           let content = msg.content;
-          
-          
-      
           messages.push({ role: "user", content: content });
         } else if (msg.sender !== "System" && typeof msg.sender !== "string") {
           messages.push({ role: "assistant", content: msg.content });
