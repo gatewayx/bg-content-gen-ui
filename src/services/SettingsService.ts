@@ -1,4 +1,4 @@
-import { VITE_CANVAS_MODE_PROMPT, WRITE_AI_SYSTEM_PROMPT } from "../constants";
+import { DEFAULT_MODELS, VITE_CANVAS_MODE_PROMPT, WRITE_AI_SYSTEM_PROMPT } from "../constants";
 
 export interface Settings {
   canvasModePrompt: string;
@@ -15,7 +15,7 @@ const DEFAULT_SETTINGS: Settings = {
   canvasModePrompt: VITE_CANVAS_MODE_PROMPT || "",
   canvasMode: false,
   researchModel: "o1",
-  writerModel: "jessievoice",
+  writerModel: DEFAULT_MODELS.WRITER,
   researchPrompts: {
     "o1": ""
   },
@@ -23,8 +23,8 @@ const DEFAULT_SETTINGS: Settings = {
     "jessievoice": WRITE_AI_SYSTEM_PROMPT
   },
   modelTokens: {
-    "o1": "",
-    "jessievoice": WRITE_AI_SYSTEM_PROMPT
+    "o1": import.meta.env.VITE_OPEN_AI_KEY,
+    "jessievoice": import.meta.env.VITE_OPEN_AI_KEY
   }
 };
 
@@ -32,7 +32,25 @@ export const getSettings = (): Settings => {
   const storedSettings = localStorage.getItem('settings');
   if (storedSettings) {
     try {
-      return JSON.parse(storedSettings);
+      const parsed = JSON.parse(storedSettings);
+      // Merge with default settings to ensure all required fields exist
+      return {
+        ...DEFAULT_SETTINGS,
+        ...parsed,
+        // Ensure nested objects are merged properly
+        researchPrompts: {
+          ...DEFAULT_SETTINGS.researchPrompts,
+          ...(parsed.researchPrompts || {})
+        },
+        writerPrompts: {
+          ...DEFAULT_SETTINGS.writerPrompts,
+          ...(parsed.writerPrompts || {})
+        },
+        modelTokens: {
+          ...DEFAULT_SETTINGS.modelTokens,
+          ...(parsed.modelTokens || {})
+        }
+      };
     } catch (error) {
       console.error('Error parsing settings:', error);
       return DEFAULT_SETTINGS;

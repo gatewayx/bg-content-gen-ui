@@ -49,10 +49,10 @@ export default function Header() {
   // Initialize state from settings service
   const initialSettings = React.useMemo(() => getSettings(), []);
   const [researchModel, setResearchModel] = React.useState<ModelValue>(
-    initialSettings.researchModel
+    initialSettings.researchModel || DEFAULT_MODELS.RESEARCH
   );
   const [writerModel, setWriterModel] = React.useState<ModelValue>(
-    initialSettings.writerModel
+    initialSettings.writerModel || DEFAULT_MODELS.WRITER
   );
   const [researchPrompts, setResearchPrompts] = React.useState(
     initialSettings.researchPrompts
@@ -60,6 +60,14 @@ export default function Header() {
   const [writerPrompts, setWriterPrompts] = React.useState(
     initialSettings.writerPrompts
   );
+
+  // Ensure writer model is set on mount
+  React.useEffect(() => {
+    if (!writerModel) {
+      setWriterModel(DEFAULT_MODELS.WRITER);
+    }
+  }, [writerModel]);
+
 
   // Fetch fine-tuned models when drawer opens
   React.useEffect(() => {

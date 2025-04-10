@@ -327,7 +327,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
       
       // Get system message from settings for the current model
       const canvasMode:boolean = JSON.parse(localStorage.getItem('canvasMode') || 'false');
-      let system = settings.writerPrompts[settings.writerModel] || '';
+      let system = settings.writerPrompts[getModelDisplayName(settings.writerModel)] || '';
 
       if (canvasMode) {
         // Get canvas mode prompt from localStorage or use default
