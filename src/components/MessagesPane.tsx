@@ -334,11 +334,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
         const canvasModePrompt = localStorage.getItem('canvasModePrompt') || VITE_CANVAS_MODE_PROMPT;
         system = `${system}\n\n${canvasModePrompt}`;
       }
-
-      messages.push({ 
-        role: "system", 
-        content: system
-      });
+      
       
       // Add all previous messages to the context
       ftChatMessages.forEach(msg => {
