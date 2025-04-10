@@ -8,52 +8,64 @@ import FormatUnderlinedIcon from '@mui/icons-material/FormatUnderlined';
 import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted';
 import CloseIcon from '@mui/icons-material/Close';
 import IconButton from "@mui/joy/IconButton";
-
 interface SimpleEditorProps {
   initialContent?: string;
   onSave?: (content: string) => void;
   onClose?: () => void;
 }
-
 export default function SimpleEditor({ initialContent = "", onSave, onClose }: SimpleEditorProps) {
-  const [content, setContent] = React.useState(initialContent);
   const editorRef = React.useRef<HTMLDivElement>(null);
-
+  
   // Function to handle content changes
   const handleContentChange = (e: React.FormEvent<HTMLDivElement>) => {
     const newContent = e.currentTarget.innerHTML;
-    setContent(newContent);
     if (onSave) {
       onSave(newContent);
     }
   };
-
   // Function to handle closing
   const handleClose = () => {
     if (onClose) {
       onClose();
     }
   };
-
+  // Initialize and update content
   React.useEffect(() => {
-    // Initialize editor with initial content
     if (editorRef.current) {
-      editorRef.current.innerHTML = initialContent;
+      // Only update if content is different
+      if (editorRef.current.innerHTML !== initialContent) {
+        // Store selection positions
+        const selection = window.getSelection();
+        let range = null;
+        if (selection && selection.rangeCount > 0) {
+          range = selection.getRangeAt(0);
+        }
+        
+        // Update content
+        editorRef.current.innerHTML = initialContent;
+        
+        // Restore cursor position to end if we were focused
+        if (document.activeElement === editorRef.current) {
+          const newRange = document.createRange();
+          newRange.selectNodeContents(editorRef.current);
+          newRange.collapse(false); // false means collapse to end
+          selection?.removeAllRanges();
+          selection?.addRange(newRange);
+        }
+      }
     }
-  }, [initialContent]);
-
+  }, [initialContent]); // Only run when initialContent changes
+  
   // Basic formatting functions
   const formatText = (command: string, value?: string) => {
     document.execCommand(command, false, value);
     if (editorRef.current) {
       const newContent = editorRef.current.innerHTML;
-      setContent(newContent);
       if (onSave) {
         onSave(newContent);
       }
     }
   };
-
   return (
     <Box sx={{ width: "100%", height: "100%", display: "flex", flexDirection: "column" }}>
       <Stack 
@@ -107,4 +119,4 @@ export default function SimpleEditor({ initialContent = "", onSave, onClose }: S
       />
     </Box>
   );
-} 
+}
