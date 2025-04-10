@@ -1,3 +1,5 @@
+import { VITE_CANVAS_MODE_PROMPT, WRITE_AI_SYSTEM_PROMPT } from "../constants";
+
 export interface Settings {
   canvasModePrompt: string;
   canvasMode: boolean;
@@ -10,19 +12,19 @@ export interface Settings {
 }
 
 const DEFAULT_SETTINGS: Settings = {
-  canvasModePrompt: process.env.VITE_CANVAS_MODE_PROMPT || "",
+  canvasModePrompt: VITE_CANVAS_MODE_PROMPT || "",
   canvasMode: false,
   researchModel: "o1",
   writerModel: "jessievoice",
   researchPrompts: {
-    "o1": "You are a helpful AI assistant. Please help me with my request."
+    "o1": ""
   },
   writerPrompts: {
-    "jessievoice": "You are a helpful AI assistant. Please help me with my request."
+    "jessievoice": WRITE_AI_SYSTEM_PROMPT
   },
   modelTokens: {
     "o1": "",
-    "jessievoice": ""
+    "jessievoice": WRITE_AI_SYSTEM_PROMPT
   }
 };
 

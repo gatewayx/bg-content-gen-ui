@@ -334,27 +334,14 @@ export default function MessagesPane(props: MessagesPaneProps) {
         system = `${system} ${VITE_CANVAS_MODE_PROMPT}`;
       }
 
-      // messages.push({ 
-      //   role: "system", 
-      //   content:system
-      // });
+
       
       // Add all previous messages to the context
       ftChatMessages.forEach(msg => {
         if (msg.sender === "You") {
           let content = msg.content;
           
-          if (canvasMode) {
-            // Include both the user's message and current canvas content
-            content = `User Message: 
-            --------------------
-            ${msg.content}
-            
-            --------------------
-            Current Canvas Output:
-            
-            ${editorContent}`;
-          }
+          
       
           messages.push({ role: "user", content: content });
         } else if (msg.sender !== "System" && typeof msg.sender !== "string") {
@@ -363,15 +350,15 @@ export default function MessagesPane(props: MessagesPaneProps) {
       });
       
       // Add current user message
-      // let currentMessage = emptyTextAreaValue;
-      // if (canvasMode) {
-      //   currentMessage = `User Message: 
-      //   ${emptyTextAreaValue}
-      //   --------------------------
-      //   Current Canvas Output:
-      //   ${editorContent}`;
-      // }
-      // messages.push({ role: "user", content: currentMessage });
+      let currentMessage = emptyTextAreaValue;
+      if (canvasMode) {
+        currentMessage = `User Message: 
+        ${emptyTextAreaValue}
+        --------------------------
+        Current Canvas Output:
+        ${editorContent}`;
+      }
+      messages.push({ role: "user", content: currentMessage });
 
       // Get the token for the selected model
       const modelToken = settings.modelTokens[settings.writerModel] || import.meta.env.VITE_OPEN_AI_KEY;

@@ -58,6 +58,18 @@ You must only use the information explicitly mentioned in the transcript.
 - Your goal is to structure, summarize, and refine the content while staying 100% factually accurate.
 `;
 
+
+export const VITE_CANVAS_MODE_PROMPT=`You are in Canvas Mode.
+
+In this mode:
+- Only respond with HTML content meant to be rendered inside an HTML editor.
+- Do not include any text outside of HTML tags.
+- Avoid conversational phrases like 'Here is the HTML:' or explanations.
+- Your input includes the current canvas under 'Current Output', which you must update or extend appropriately based on user message Under User Message:.
+- Do not include <script> or <style> tags unless explicitly asked.
+
+Return only valid, clean HTML.`
+
 export const AI_MODELS = {
   O1: 'o1',
   JESSE_VOICE: 'ft:gpt-4o-2024-08-06:gateway-x:jp-linkedin-top-30-likes-2025-03-10:B9jJFWXa',
