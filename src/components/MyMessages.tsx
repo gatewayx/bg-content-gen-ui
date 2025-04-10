@@ -123,11 +123,7 @@ export default function MyProfile() {
   };
 
   const handleNewFTMessage = (newFTMessage: MessageProps) => {
-    // Add canvas mode prompt to messages from the Write pane (left side)
-    if (settings.canvasModePrompt) {
-      newFTMessage.content = `${settings.canvasModePrompt}\n\n${newFTMessage.content}`;
-    }
-    
+    // Remove the canvas mode prompt addition from here
     setSessions((prevSessions) =>
       prevSessions.map((session) =>
         session.id === selectedChat?.id
