@@ -59,7 +59,7 @@ export default function Login() {
         justifyContent: 'center', 
         alignItems: 'center', 
         minHeight: '100vh',
-        backgroundColor: '#ffffff'
+        backgroundColor: 'var(--joy-palette-background-body)'
       }}>
         <Sheet
           sx={{
@@ -71,7 +71,7 @@ export default function Login() {
             gap: 2.5,
             borderRadius: 'sm',
             boxShadow: 'md',
-            backgroundColor: '#ffffff'
+            backgroundColor: 'var(--joy-palette-background-surface)'
           }}
           variant="outlined"
         >
@@ -101,7 +101,7 @@ export default function Login() {
                 alignItems: 'center',
                 boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
                 overflow: 'hidden',
-                backgroundColor: 'transparent'
+                backgroundColor: 'var(--joy-palette-background-surface)'
               }}>
                 <img 
                   src="./semi-logo-gateway.png" 
@@ -125,7 +125,7 @@ export default function Login() {
                 flexDirection: 'column',
                 alignItems: 'center',
                 gap: 0.75,
-                color: '#000000',
+                color: 'var(--joy-palette-text-primary)',
                 mb: 2
               }}
             >
@@ -134,7 +134,7 @@ export default function Login() {
                 sx={{ 
                   fontSize: '0.75em',
                   verticalAlign: 'sub',
-                  color: '#333333',
+                  color: 'var(--joy-palette-text-secondary)',
                   display: 'flex',
                   alignItems: 'center',
                   gap: 0.5
@@ -146,7 +146,7 @@ export default function Login() {
                   target="_blank"
                   rel="noopener noreferrer"
                   sx={{ 
-                    color: '#333333',
+                    color: 'var(--joy-palette-text-secondary)',
                     textDecoration: 'none',
                     '&:hover': {
                       textDecoration: 'underline'
@@ -157,20 +157,30 @@ export default function Login() {
                 </Link>
               </Typography>
             </Typography>
-            <Typography level="body-sm" textAlign="center" sx={{ mt: 2, color: '#333333', mb: 2 }}>Sign in to continue.</Typography>
+            <Typography 
+              level="body-sm" 
+              textAlign="center" 
+              sx={{ 
+                mt: 2, 
+                color: 'var(--joy-palette-text-secondary)', 
+                mb: 2 
+              }}
+            >
+              Sign in to continue.
+            </Typography>
           </div>
           <Button
             onClick={handleGoogleSignIn}
             sx={{
-              backgroundColor: '#fff',
-              color: 'rgba(0, 0, 0, 0.87)',
+              backgroundColor: 'var(--joy-palette-background-surface)',
+              color: 'var(--joy-palette-text-primary)',
               '&:hover': {
-                backgroundColor: '#f5f5f5',
+                backgroundColor: 'var(--joy-palette-background-level1)',
               },
               display: 'flex',
               alignItems: 'center',
               gap: 1,
-              border: '1px solid #dadce0',
+              border: '1px solid var(--joy-palette-neutral-outlinedBorder)',
               padding: '12px 24px',
               fontSize: '1rem',
               '& .MuiSvgIcon-root': {
