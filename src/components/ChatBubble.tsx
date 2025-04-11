@@ -11,7 +11,7 @@ import DoneIcon from "@mui/icons-material/Done";
 import EditIcon from "@mui/icons-material/Edit";
 import ReactMarkdown from 'react-markdown';
 import Link from '@mui/joy/Link';
-import remarkGfm from 'remark-gfm'
+import remarkGfm from 'remark-gfm';
 
 type ChatBubbleProps = MessageProps & {
   onEdit?: (content: string) => void;
@@ -52,44 +52,36 @@ export default function ChatBubble({
 
   // Function to render content based on canvasMode
   const renderContent = () => {
-    // if (canvasMode) {
-    //   // For canvas mode messages, show HTML directly
-    //   return (
-    //     <div 
-    //       dangerouslySetInnerHTML={{ 
-    //         __html: content 
-    //       }}
-    //       style={{
-    //         color: isSent ? "white" : "inherit"
-    //       }}
-    //     />
-    //   );
-    // }
-
-    // For regular messages, use ReactMarkdown
     return (
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
           // Headings
           h1: ({ children }) => (
-            <Typography level="h1" sx={{ color: isSent ? "white" : "inherit", mb: 2 }}>
+            <Typography level="h1" sx={{ color: isSent ? "white" : "inherit", mb: 2, fontSize: "1.5em" }}>
               {children}
             </Typography>
           ),
           h2: ({ children }) => (
-            <Typography level="h2" sx={{ color: isSent ? "white" : "inherit", mb: 2 }}>
+            <Typography level="h2" sx={{ color: isSent ? "white" : "inherit", mb: 2, fontSize: "1.3em" }}>
               {children}
             </Typography>
           ),
           h3: ({ children }) => (
-            <Typography level="h3" sx={{ color: isSent ? "white" : "inherit", mb: 2 }}>
+            <Typography level="h3" sx={{ color: isSent ? "white" : "inherit", mb: 2, fontSize: "1.1em" }}>
               {children}
             </Typography>
           ),
           // Paragraphs
           p: ({ children }) => (
-            <Typography level="body-sm" sx={{ color: isSent ? "white" : "inherit", mb: 2 }}>
+            <Typography 
+              level="body-sm" 
+              sx={{ 
+                color: isSent ? "white" : "inherit", 
+                mb: 2,
+                whiteSpace: "pre-wrap"
+              }}
+            >
               {children}
             </Typography>
           ),
@@ -100,8 +92,11 @@ export default function ChatBubble({
               sx={{
                 color: isSent ? "white" : "inherit",
                 mb: 2,
-                pl: 3,  // Adjust padding for left margin
-                listStyleType: "disc",  // Ensure bullet points are visible
+                pl: 3,
+                listStyleType: "disc",
+                '& li': {
+                  mb: 1
+                }
               }}
             >
               {children}
@@ -113,8 +108,11 @@ export default function ChatBubble({
               sx={{
                 color: isSent ? "white" : "inherit",
                 mb: 2,
-                pl: 3,  // Adjust padding for left margin
-                listStyleType: "decimal",  // Ensure ordered list styling
+                pl: 3,
+                listStyleType: "decimal",
+                '& li': {
+                  mb: 1
+                }
               }}
             >
               {children}
@@ -125,41 +123,61 @@ export default function ChatBubble({
               component="li"
               sx={{
                 color: isSent ? "white" : "inherit",
-                mb: 1,
-                lineHeight: 1.5,  // Add line height for readability
+                lineHeight: 1.5,
               }}
             >
               {children}
             </Box>
           ),
-
           // Code blocks
-          code: ({ children }) => (
-
-            <Box
-              component="pre"
-              sx={{
-                backgroundColor: isSent ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
-                padding: "1em",
-                borderRadius: "4px",
-                overflow: "auto",
-                color: isSent ? "white" : "inherit",
-                fontFamily: "monospace",
-                mb: 2,
-              }}
-            >
-              <Box component="code">{children}</Box>
-            </Box>
-
-          ),
+          code: ({ children, className }) => {
+            const isInline = !className;
+            
+            return isInline ? (
+              <Box
+                component="code"
+                sx={{
+                  backgroundColor: isSent ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
+                  padding: "0.2em 0.4em",
+                  borderRadius: "4px",
+                  color: isSent ? "white" : "inherit",
+                  fontFamily: "monospace",
+                  fontSize: "0.9em",
+                }}
+              >
+                {children}
+              </Box>
+            ) : (
+              <Box
+                component="pre"
+                sx={{
+                  backgroundColor: isSent ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
+                  padding: "1em",
+                  borderRadius: "4px",
+                  overflow: "auto",
+                  color: isSent ? "white" : "inherit",
+                  fontFamily: "monospace",
+                  mb: 2,
+                  fontSize: "0.9em",
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-word"
+                }}
+              >
+                <Box component="code" className={className}>
+                  {children}
+                </Box>
+              </Box>
+            );
+          },
           // Blockquotes
           blockquote: ({ children }) => (
             <Box
               component="blockquote"
               sx={{
-                borderLeft: `4px solid ${isSent ? "white" : "inherit"}`,
+                borderLeft: `4px solid ${isSent ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.2)"}`,
                 paddingLeft: "1em",
                 marginLeft: 0,
+                marginRight: 0,
                 color: isSent ? "white" : "inherit",
                 mb: 2,
                 fontStyle: "italic",
@@ -178,6 +196,7 @@ export default function ChatBubble({
                 margin: "1em 0",
                 color: isSent ? "white" : "inherit",
                 mb: 2,
+                fontSize: "0.9em"
               }}
             >
               {children}
@@ -187,11 +206,12 @@ export default function ChatBubble({
             <Box
               component="th"
               sx={{
-                border: `1px solid ${isSent ? "white" : "inherit"}`,
+                border: `1px solid ${isSent ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.2)"}`,
                 padding: "0.5em",
                 textAlign: "left",
                 color: isSent ? "white" : "inherit",
                 fontWeight: "bold",
+                backgroundColor: isSent ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)"
               }}
             >
               {children}
@@ -201,7 +221,7 @@ export default function ChatBubble({
             <Box
               component="td"
               sx={{
-                border: `1px solid ${isSent ? "white" : "inherit"}`,
+                border: `1px solid ${isSent ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.2)"}`,
                 padding: "0.5em",
                 color: isSent ? "white" : "inherit",
               }}
@@ -213,8 +233,10 @@ export default function ChatBubble({
           a: ({ href, children }) => (
             <Link
               href={href}
+              target="_blank"
+              rel="noopener noreferrer"
               sx={{
-                color: isSent ? "white" : "inherit",
+                color: isSent ? "white" : "primary.main",
                 textDecoration: "underline",
                 '&:hover': {
                   opacity: 0.8,
@@ -230,9 +252,8 @@ export default function ChatBubble({
               component="hr"
               sx={{
                 border: "none",
-                borderTop: `1px solid ${isSent ? "white" : "inherit"}`,
+                borderTop: `1px solid ${isSent ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.2)"}`,
                 margin: "1.5em 0",
-                opacity: 0.5,
               }}
             />
           ),

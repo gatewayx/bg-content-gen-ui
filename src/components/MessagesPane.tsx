@@ -109,11 +109,17 @@ export default function MessagesPane(props: MessagesPaneProps) {
       try {
         const sessionState = JSON.parse(savedSession);
         const selected = sessionState.filter((obj:ChatProps) => obj.id == chat.id)[0];
-        // console.log(selected);
+
+        // find the last message from the selected session, sender is not you
+        const lastMessage = selected.messagesFT[selected.messagesFT.length - 1];
+        if (lastMessage && lastMessage.sender !== "You") {
+          setEditorContent(lastMessage.content);
+        } else {
+          setEditorContent("");
+        }
         
         setChatMessages(selected.messages);
         setftChatMessages(selected.messagesFT);
-        setEditorContent(selected.editorContent || ""); // Load editor content from session
         setTextAreaValue(selected.textAreaValue || ""); // Load research textarea value
         setEmptyTextAreaValue(selected.emptyTextAreaValue || ""); // Load write textarea value
       } catch (error) {

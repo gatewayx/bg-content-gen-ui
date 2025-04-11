@@ -6,6 +6,8 @@ import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import MyMessages from './components/MyMessages';
 import { SettingsProvider } from './contexts/SettingsContext';
+import { MDXEditor } from '@mdxeditor/editor'
+import '@mdxeditor/editor/style.css'
 
 export default function JoyMessagesTemplate() {
   return (
