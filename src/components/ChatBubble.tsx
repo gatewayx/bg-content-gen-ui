@@ -28,8 +28,8 @@ export default function ChatBubble({
   const [isCopied, setIsCopied] = React.useState(false);
 
   // Get sender name based on type
-  const senderName = typeof sender === "string" 
-    ? sender 
+  const senderName = typeof sender === "string"
+    ? sender
     : sender.name || "Assistant";
 
   // Function to handle copy with markdown formatting
@@ -95,58 +95,62 @@ export default function ChatBubble({
           ),
           // Lists
           ul: ({ children }) => (
-            <Box 
-              component="ul" 
-              sx={{ 
+            <Box
+              component="ul"
+              sx={{
                 color: isSent ? "white" : "inherit",
                 mb: 2,
-                pl: 2,
+                pl: 3,  // Adjust padding for left margin
+                listStyleType: "disc",  // Ensure bullet points are visible
               }}
             >
               {children}
             </Box>
           ),
           ol: ({ children }) => (
-            <Box 
-              component="ol" 
-              sx={{ 
+            <Box
+              component="ol"
+              sx={{
                 color: isSent ? "white" : "inherit",
                 mb: 2,
-                pl: 2,
+                pl: 3,  // Adjust padding for left margin
+                listStyleType: "decimal",  // Ensure ordered list styling
               }}
             >
               {children}
             </Box>
           ),
           li: ({ children }) => (
-            <Box 
-              component="li" 
-              sx={{ 
+            <Box
+              component="li"
+              sx={{
                 color: isSent ? "white" : "inherit",
                 mb: 1,
+                lineHeight: 1.5,  // Add line height for readability
               }}
             >
               {children}
             </Box>
           ),
+
           // Code blocks
-          code: ({  children }) => (
-            
-              <Box
-                component="pre"
-                sx={{
-                  backgroundColor: isSent ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
-                  padding: "1em",
-                  borderRadius: "4px",
-                  overflow: "auto",
-                  color: isSent ? "white" : "inherit",
-                  fontFamily: "monospace",
-                  mb: 2,
-                }}
-              >
-                <Box component="code">{children}</Box>
-              </Box>
-            
+          code: ({ children }) => (
+
+            <Box
+              component="pre"
+              sx={{
+                backgroundColor: isSent ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
+                padding: "1em",
+                borderRadius: "4px",
+                overflow: "auto",
+                color: isSent ? "white" : "inherit",
+                fontFamily: "monospace",
+                mb: 2,
+              }}
+            >
+              <Box component="code">{children}</Box>
+            </Box>
+
           ),
           // Blockquotes
           blockquote: ({ children }) => (
@@ -298,7 +302,7 @@ export default function ChatBubble({
                 : "background.body",
               maxWidth: "100%",
               wordBreak: "break-word",
-              whiteSpace: "pre-wrap",
+              whiteSpace: "normal",
               overflowWrap: "break-word",
             }}
           >
@@ -331,7 +335,7 @@ export default function ChatBubble({
           >
             {isCopied ? <DoneIcon /> : <ContentCopyIcon />}
           </IconButton>
-          
+
           {!isSent && onEdit && (
             <IconButton
               variant="plain"

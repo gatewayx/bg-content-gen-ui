@@ -8,64 +8,64 @@ import FormatUnderlinedIcon from '@mui/icons-material/FormatUnderlined';
 import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted';
 import CloseIcon from '@mui/icons-material/Close';
 import IconButton from "@mui/joy/IconButton";
+
 interface SimpleEditorProps {
   initialContent?: string;
   onSave?: (content: string) => void;
   onClose?: () => void;
 }
+
 export default function SimpleEditor({ initialContent = "", onSave, onClose }: SimpleEditorProps) {
   const editorRef = React.useRef<HTMLDivElement>(null);
-  
+
   // Function to handle content changes
   const handleContentChange = (e: React.FormEvent<HTMLDivElement>) => {
-    const newContent = e.currentTarget.innerHTML;
     if (onSave) {
-      onSave(newContent);
+      onSave(e.currentTarget.innerHTML);
     }
   };
+
   // Function to handle closing
   const handleClose = () => {
     if (onClose) {
       onClose();
     }
   };
-  // Initialize and update content
+
+  // Initialize content
   React.useEffect(() => {
     if (editorRef.current) {
-      // Only update if content is different
       if (editorRef.current.innerHTML !== initialContent) {
-        // Store selection positions
         const selection = window.getSelection();
         let range = null;
         if (selection && selection.rangeCount > 0) {
           range = selection.getRangeAt(0);
         }
-        
-        // Update content
-        editorRef.current.innerHTML = initialContent;
-        
-        // Restore cursor position to end if we were focused
-        if (document.activeElement === editorRef.current) {
-          const newRange = document.createRange();
-          newRange.selectNodeContents(editorRef.current);
-          newRange.collapse(false); // false means collapse to end
+
+        // Convert markdown to HTML
+        let content = initialContent;
+        content = content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        content = content.replace(/\*(.*?)\*/g, '<em>$1</em>');
+        editorRef.current.innerHTML = content;
+
+        // Restore cursor position if editor was focused
+        if (document.activeElement === editorRef.current && range) {
           selection?.removeAllRanges();
-          selection?.addRange(newRange);
+          selection?.addRange(range);
         }
       }
     }
-  }, [initialContent]); // Only run when initialContent changes
-  
-  // Basic formatting functions
+  }, [initialContent]);
+
+  // Format text function
   const formatText = (command: string, value?: string) => {
+    editorRef.current?.focus();
     document.execCommand(command, false, value);
     if (editorRef.current) {
-      const newContent = editorRef.current.innerHTML;
-      if (onSave) {
-        onSave(newContent);
-      }
+      handleContentChange({ currentTarget: editorRef.current } as React.FormEvent<HTMLDivElement>);
     }
   };
+
   return (
     <Box sx={{ width: "100%", height: "100%", display: "flex", flexDirection: "column" }}>
       <Stack 
@@ -77,20 +77,36 @@ export default function SimpleEditor({ initialContent = "", onSave, onClose }: S
           borderColor: "divider",
           alignItems: "center",
         }}
-      >        
-        <IconButton size="sm" onClick={() => formatText('bold')}>
+      >
+        <IconButton 
+          size="sm" 
+          onClick={() => formatText('bold')}
+          onMouseDown={(e) => e.preventDefault()}
+        >
           <FormatBoldIcon fontSize="small" />
         </IconButton>
         
-        <IconButton size="sm" onClick={() => formatText('italic')}>
+        <IconButton 
+          size="sm" 
+          onClick={() => formatText('italic')}
+          onMouseDown={(e) => e.preventDefault()}
+        >
           <FormatItalicIcon fontSize="small" />
         </IconButton>
         
-        <IconButton size="sm" onClick={() => formatText('underline')}>
+        <IconButton 
+          size="sm" 
+          onClick={() => formatText('underline')}
+          onMouseDown={(e) => e.preventDefault()}
+        >
           <FormatUnderlinedIcon fontSize="small" />
         </IconButton>
         
-        <IconButton size="sm" onClick={() => formatText('insertUnorderedList')}>
+        <IconButton 
+          size="sm" 
+          onClick={() => formatText('insertUnorderedList')}
+          onMouseDown={(e) => e.preventDefault()}
+        >
           <FormatListBulletedIcon fontSize="small" />
         </IconButton>
         
@@ -102,6 +118,10 @@ export default function SimpleEditor({ initialContent = "", onSave, onClose }: S
       </Stack>
       
       <Box
+        ref={editorRef}
+        contentEditable
+        suppressContentEditableWarning
+        onInput={handleContentChange}
         sx={{
           flex: 1,
           p: 2,
@@ -144,10 +164,6 @@ export default function SimpleEditor({ initialContent = "", onSave, onClose }: S
             borderRightColor: "background.surface",
           }
         }}
-        ref={editorRef}
-        contentEditable
-        suppressContentEditableWarning
-        onInput={handleContentChange}
       />
     </Box>
   );
