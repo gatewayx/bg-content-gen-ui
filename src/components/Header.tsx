@@ -5,6 +5,7 @@ import Sheet from "@mui/joy/Sheet";
 import Typography from "@mui/joy/Typography";
 import BugReportIcon from "@mui/icons-material/BugReport";
 import SettingsIcon from "@mui/icons-material/Settings";
+import PersonIcon from "@mui/icons-material/Person";
 import { downloadLogs } from "../services/LoggerService";
 import {
   ModalClose,
@@ -17,6 +18,8 @@ import {
   Divider,
   Button,
   Box,
+  Menu,
+  MenuItem,
 } from "@mui/joy";
 import {
   MODEL_OPTIONS,
@@ -30,6 +33,8 @@ import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import { fetchFineTunedModels } from "../services/OpenAIService";
 import CircularProgress from "@mui/joy/CircularProgress";
 import Link from "@mui/joy/Link";
+import { useAuth } from "../contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 type ModelValue = string;
 
@@ -42,6 +47,9 @@ type ModelOption = {
 
 export default function Header() {
   const [open, setOpen] = React.useState(false);
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+  const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const [modelOptions, setModelOptions] =
     React.useState<ModelOption[]>(MODEL_OPTIONS);
   const [isLoadingModels, setIsLoadingModels] = React.useState(false);
@@ -211,6 +219,23 @@ export default function Header() {
     setOpen(false);
   };
 
+  const handleProfileClick = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      navigate('/login');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
+
   return (
     <>
       <Sheet
@@ -270,30 +295,60 @@ export default function Header() {
                     </Typography>
         </Typography>
 
-        <div style={{ display: "flex", gap: "8px" }}>
+        {/* Right Side - Icons */}
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
           <IconButton
             variant="plain"
-            aria-label="settings"
             color="neutral"
             size="sm"
-            sx={{ display: { xs: "none", sm: "unset" }, color: "white" }}
-            onClick={() => setOpen(true)}
-          >
-            <SettingsIcon />
-          </IconButton>
-          <IconButton
-            variant="plain"
-            aria-label="edit"
-            color="warning"
-            size="sm"
-            sx={{ display: { xs: "none", sm: "unset" } }}
-            onClick={() => {
-              downloadLogs();
-            }}
+            onClick={() => downloadLogs()}
+            sx={{ color: 'white' }}
           >
             <BugReportIcon />
           </IconButton>
-        </div>
+
+          <IconButton
+            variant="plain"
+            color="neutral"
+            size="sm"
+            onClick={() => setOpen(true)}
+            sx={{ color: 'white' }}
+          >
+            <SettingsIcon />
+          </IconButton>
+
+          <IconButton
+            variant="plain"
+            color="neutral"
+            size="sm"
+            onClick={handleProfileClick}
+            sx={{ color: 'white' }}
+          >
+            <PersonIcon />
+          </IconButton>
+
+          <Menu
+            anchorEl={anchorEl}
+            open={Boolean(anchorEl)}
+            onClose={handleClose}
+            placement="bottom-end"
+          >
+            <MenuItem disabled>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                <Typography level="body-sm" fontWeight="lg">
+                  {user?.user_metadata?.full_name || 'User'}
+                </Typography>
+                <Typography level="body-xs">
+                  {user?.email || ''}
+                </Typography>
+              </Box>
+            </MenuItem>
+            <Divider />
+            <MenuItem onClick={handleLogout}>
+              Logout
+            </MenuItem>
+          </Menu>
+        </Box>
       </Sheet>
 
       <Drawer
