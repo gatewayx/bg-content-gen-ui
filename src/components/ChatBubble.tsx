@@ -35,18 +35,7 @@ export default function ChatBubble({
   // Function to handle copy with markdown formatting
   const handleCopy = () => {
     try {
-      let textToCopy = content;
-      
-      // If in canvas mode, remove HTML tags before copying
-      if (canvasMode) {
-        // Create a temporary div to parse HTML
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = content;
-        // Get text content which removes all HTML tags
-        textToCopy = tempDiv.textContent || tempDiv.innerText || '';
-      }
-      
-      navigator.clipboard.writeText(textToCopy);
+      navigator.clipboard.writeText(content);
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), 2000);
     } catch (err) {
@@ -61,34 +50,21 @@ export default function ChatBubble({
     }
   };
 
-  // Function to sanitize HTML content for chat display
-  const sanitizeHTML = (html: string) => {
-    // Remove script tags and their content
-    html = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
-    // Remove style tags and their content
-    html = html.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
-    // Remove onclick and other event handlers
-    html = html.replace(/ on\w+="[^"]*"/g, '');
-    // Remove javascript: URLs
-    html = html.replace(/javascript:[^"']*/gi, '');
-    return html;
-  };
-
   // Function to render content based on canvasMode
   const renderContent = () => {
-    if (canvasMode) {
-      // For canvas mode messages, show sanitized HTML in chat
-      return (
-        <div 
-          dangerouslySetInnerHTML={{ 
-            __html: sanitizeHTML(content) 
-          }}
-          style={{
-            color: isSent ? "white" : "inherit"
-          }}
-        />
-      );
-    }
+    // if (canvasMode) {
+    //   // For canvas mode messages, show HTML directly
+    //   return (
+    //     <div 
+    //       dangerouslySetInnerHTML={{ 
+    //         __html: content 
+    //       }}
+    //       style={{
+    //         color: isSent ? "white" : "inherit"
+    //       }}
+    //     />
+    //   );
+    // }
 
     // For regular messages, use ReactMarkdown
     return (

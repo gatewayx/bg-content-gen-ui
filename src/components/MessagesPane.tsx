@@ -113,29 +113,50 @@ export default function MessagesPane(props: MessagesPaneProps) {
         
         setChatMessages(selected.messages);
         setftChatMessages(selected.messagesFT);
+        setEditorContent(selected.editorContent || ""); // Load editor content from session
+        setTextAreaValue(selected.textAreaValue || ""); // Load research textarea value
+        setEmptyTextAreaValue(selected.emptyTextAreaValue || ""); // Load write textarea value
       } catch (error) {
         console.error('Error loading session state:', error);
         // Reset to empty arrays if there's an error
         setChatMessages([]);
         setftChatMessages([]);
+        setEditorContent(""); // Reset editor content
+        setTextAreaValue(""); // Reset research textarea
+        setEmptyTextAreaValue(""); // Reset write textarea
       }
     } else {
       // Reset to empty arrays for new sessions
       setChatMessages([]);
       setftChatMessages([]);
+      setEditorContent(""); // Reset editor content
+      setTextAreaValue(""); // Reset research textarea
+      setEmptyTextAreaValue(""); // Reset write textarea
     }
   }, [sessionId]);
 
-  // Save entire session state to local storage whenever messages change
-  // React.useEffect(() => {
-  //   const sessionState = {
-  //     chatMessages,
-  //     ftChatMessages,
-  //     timestamp: new Date().toISOString(),
-  //     sessionId,
-  //   };
-  //   localStorage.setItem(`session_${sessionId}`, JSON.stringify(sessionState));
-  // }, [chatMessages, ftChatMessages, sessionId]);
+  // Save editor content and textarea values to session state when they change
+  React.useEffect(() => {
+    const savedSession = localStorage.getItem(`chat_sessions`);
+    if (savedSession) {
+      try {
+        const sessionState = JSON.parse(savedSession);
+        const updatedSessions = sessionState.map((session: ChatProps) => 
+          session.id === chat.id 
+            ? { 
+                ...session, 
+                editorContent,
+                textAreaValue,
+                emptyTextAreaValue
+              } 
+            : session
+        );
+        localStorage.setItem(`chat_sessions`, JSON.stringify(updatedSessions));
+      } catch (error) {
+        console.error('Error saving session state:', error);
+      }
+    }
+  }, [editorContent, textAreaValue, emptyTextAreaValue, chat.id]);
 
   const handleAbortRequest = () => {
     if (abortControllerRef.current) {
@@ -267,6 +288,8 @@ export default function MessagesPane(props: MessagesPaneProps) {
         return finalMessages;
       });
 
+      setEditorContent("");
+      setTextAreaValue(""); // Clear research textarea
       handleAbortRequest();
       setIsLoading(false);
     } catch (error: unknown) {
@@ -390,6 +413,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
       });
       // Set the editor content to the full message
       setEditorContent(fullMessage);
+      setEmptyTextAreaValue(""); // Clear write textarea
       handleAbortRequestFT();
       setIsLoading(false);
     } catch (error: unknown) {

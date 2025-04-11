@@ -49,7 +49,6 @@ export default function MyProfile() {
   }, [sessions]);
 
   const handleNewSession = () => {
-
     const timestamp = new Date().toLocaleString("en-US", {
       month: "2-digit",
       day: "2-digit",
@@ -68,12 +67,9 @@ export default function MyProfile() {
         avatar: "/static/images/avatar/5.jpg",
         online: false,
       },
-      messages: [
-      
-      ],
-      messagesFT: [
-        
-      ],
+      messages: [],
+      messagesFT: [],
+      editorContent: "", // Initialize with empty editor content
     };
 
     setSessions((prev) => [...prev, newSession]);

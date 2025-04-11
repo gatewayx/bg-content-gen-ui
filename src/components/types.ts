@@ -20,6 +20,9 @@ export interface ChatProps {
   sender: UserProps;
   messages: MessageProps[];
   messagesFT: MessageProps[];
+  editorContent?: string;
+  textAreaValue?: string;
+  emptyTextAreaValue?: string;
 }
 
 export interface ChatMessage {
