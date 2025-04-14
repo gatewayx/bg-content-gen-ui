@@ -39,7 +39,7 @@ export default function ChatListItem({
 
   // Truncate the last message to 45 characters if it exceeds
   const lastMessageContent =
-    messages.length > 0 && messages[messages.length - 1].content
+  messages && messages.length > 0 && messages[messages.length - 1].content
       ? messages[messages.length - 1].content.substring(0, 45) + (messages[messages.length - 1].content.length > 45 ? "..." : "")
       : "";
 
@@ -63,7 +63,7 @@ export default function ChatListItem({
                 <Typography level="body-sm">{sender.username}</Typography>
               </Box>
               <Box sx={{ lineHeight: 1.5, textAlign: "right" }}>
-                {messages.length > 0 && messages[messages.length - 1].unread && (
+                {messages && messages.length > 0 && messages[messages.length - 1].unread && (
                   <CircleIcon sx={{ fontSize: 12 }} color="primary" />
                 )}
                 <Typography level="body-xs" sx={{ display: { xs: "none", md: "block" } }}>

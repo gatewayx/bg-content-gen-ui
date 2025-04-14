@@ -69,10 +69,11 @@ export const AI_MODELS = {
 
 type ModelValue = string;
 
-type ModelOption = {
+export type ModelOption = {
   label: string;
   value: ModelValue | 'divider';
   disabled?: boolean;
+  token?: string;
 };
 
 // Model options for the settings dropdown

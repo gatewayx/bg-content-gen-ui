@@ -102,7 +102,7 @@ export default function ChatsPane(props: ChatsPaneProps) {
           "--ListItem-paddingX": "1rem",
         }}
       >
-        {chats.map((chat) => (
+        {chats && chats.map((chat) => (
           <ChatListItem
             key={chat.id}
             {...chat}

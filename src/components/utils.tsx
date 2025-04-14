@@ -40,6 +40,7 @@ export function openSidebar() {
   }
   
   export function toggleMessagesPane() {
+    console.log("toggleMessagesPane");
     if (typeof window !== 'undefined' && typeof document !== 'undefined') {
       const slideIn = window
         .getComputedStyle(document.documentElement)

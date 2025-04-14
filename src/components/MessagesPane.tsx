@@ -77,25 +77,21 @@ export default function MessagesPane(props: MessagesPaneProps) {
   const [editorVisible, setEditorVisible] = React.useState(false);
 
   // Get current settings and update when they change
-  const [settings, setSettings] = React.useState(getSettings());
+  const [settings, setSettings] = React.useState(getSettings(chat.id));
 
   // Update settings when they change
-  React.useEffect(() => {
-    const handleSettingsChange = () => {
-      setSettings(getSettings());
-    };
+  // React.useEffect(() => {
+  //   const handleSettingsChange = () => {
+  //     setSettings(getSettings(sessionId));
+  //   };
 
-    // Listen for storage changes
-    window.addEventListener('storage', handleSettingsChange);
+  //   // Listen for storage changes
+  //   window.addEventListener('storage', handleSettingsChange);
     
-    // Also check for settings changes periodically
-    const interval = setInterval(handleSettingsChange, 1000);
-
-    return () => {
-      window.removeEventListener('storage', handleSettingsChange);
-      clearInterval(interval);
-    };
-  }, []);
+  //   return () => {
+  //     window.removeEventListener('storage', handleSettingsChange);
+  //   };
+  // }, []);
 
   // Get session ID from chat object
   const sessionId = chat.id || 'default';
@@ -109,11 +105,17 @@ export default function MessagesPane(props: MessagesPaneProps) {
       try {
         const sessionState = JSON.parse(savedSession);
         const selected = sessionState.filter((obj:ChatProps) => obj.id == chat.id)[0];
-        // console.log(selected);
+
+        // find the last message from the selected session, sender is not you
+        const lastMessage = selected.messagesFT[selected.messagesFT.length - 1];
+        if (lastMessage && lastMessage.sender !== "You") {
+          setEditorContent(lastMessage.content);
+        } else {
+          setEditorContent("");
+        }
         
         setChatMessages(selected.messages);
         setftChatMessages(selected.messagesFT);
-        setEditorContent(selected.editorContent || ""); // Load editor content from session
         setTextAreaValue(selected.textAreaValue || ""); // Load research textarea value
         setEmptyTextAreaValue(selected.emptyTextAreaValue || ""); // Load write textarea value
       } catch (error) {

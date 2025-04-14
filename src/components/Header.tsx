@@ -27,47 +27,89 @@ import {
   DEFAULT_MODELS,
   AI_MODELS,
   MODEL_FETCH_TOKENS,
+  ModelOption,
 } from "../constants";
-import { getSettings, saveSettings } from "../services/SettingsService";
+import { getSettings, saveSettings, Settings, DEFAULT_SETTINGS } from "../services/SettingsService";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import { fetchFineTunedModels } from "../services/OpenAIService";
 import CircularProgress from "@mui/joy/CircularProgress";
 import Link from "@mui/joy/Link";
 import { useAuth } from "../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { ChatProps } from "../components/types";
 
 type ModelValue = string;
-
-type ModelOption = {
-  label: string;
-  value: ModelValue | "divider";
-  disabled?: boolean;
-  token?: string;
-};
 
 export default function Header() {
   const [open, setOpen] = React.useState(false);
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
-  const [modelOptions, setModelOptions] =
-    React.useState<ModelOption[]>(MODEL_OPTIONS);
+  const [modelOptions, setModelOptions] = React.useState<ModelOption[]>(MODEL_OPTIONS);
   const [isLoadingModels, setIsLoadingModels] = React.useState(false);
+  const [settings, setSettings] = React.useState<Settings | null>(null);
+
+  // Function to get current chat ID
+  const getCurrentChatId = () => {
+    const savedSession = localStorage.getItem('chat_sessions');
+    let currentChatId = 'default';
+    
+    if (savedSession) {
+      try {
+        const sessionState = JSON.parse(savedSession);
+        const selectedSession = sessionState.find((session: ChatProps) => session.id === localStorage.getItem('selectedChatId'));
+        if (selectedSession) {
+          currentChatId = selectedSession.id;
+        }
+      } catch (error) {
+        console.error('Error parsing session state:', error);
+      }
+    }
+    return currentChatId;
+  };
 
   // Initialize state from settings service
-  const initialSettings = React.useMemo(() => getSettings(), []);
+  React.useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const currentChatId = getCurrentChatId();
+        const loadedSettings = await getSettings(currentChatId);
+        setSettings(loadedSettings);
+      } catch (error) {
+        console.error('Error loading settings:', error);
+        setSettings(DEFAULT_SETTINGS);
+      }
+    };
+    loadSettings();
+  }, []);
+
   const [researchModel, setResearchModel] = React.useState<ModelValue>(
-    initialSettings.researchModel || DEFAULT_MODELS.RESEARCH
+    settings?.researchModel || DEFAULT_MODELS.RESEARCH
   );
   const [writerModel, setWriterModel] = React.useState<ModelValue>(
-    initialSettings.writerModel || DEFAULT_MODELS.WRITER
+    settings?.writerModel || DEFAULT_MODELS.WRITER
   );
-  const [researchPrompts, setResearchPrompts] = React.useState(
-    initialSettings.researchPrompts
+  const [researchPrompts, setResearchPrompts] = React.useState<Record<string, string>>(
+    settings?.researchPrompts || {}
   );
-  const [writerPrompts, setWriterPrompts] = React.useState(
-    initialSettings.writerPrompts
+  const [writerPrompts, setWriterPrompts] = React.useState<Record<string, string>>(
+    settings?.writerPrompts || {}
   );
+
+  // Update state when settings change
+  React.useEffect(() => {
+    const updateStateFromSettings = async () => {
+      const currentChatId = getCurrentChatId();
+      const currentSettings = await getSettings(currentChatId);
+      if (currentSettings) {
+        setResearchModel(currentSettings.researchModel);
+        setWriterModel(currentSettings.writerModel);
+        setResearchPrompts(currentSettings.researchPrompts);
+        setWriterPrompts(currentSettings.writerPrompts);
+      }
+    };
+    updateStateFromSettings();
+  }, [settings]);
 
   // Ensure writer model is set on mount
   React.useEffect(() => {
@@ -75,7 +117,6 @@ export default function Header() {
       setWriterModel(DEFAULT_MODELS.WRITER);
     }
   }, [writerModel]);
-
 
   // Fetch fine-tuned models when drawer opens
   React.useEffect(() => {
@@ -130,21 +171,22 @@ export default function Header() {
           ]);
 
           // Update settings with model tokens
-          const settings = getSettings();
+          const currentChatId = getCurrentChatId();
+          const currentSettings = await getSettings(currentChatId);
           const modelTokens = newModels.reduce((acc, model) => {
             if (model.token) {
               acc[model.value] = model.token;
             }
             return acc;
           }, {} as Record<string, string>);
-
-          saveSettings({
-            ...settings,
+          alert(currentChatId);
+          await saveSettings({
+            ...currentSettings,
             modelTokens: {
-              ...settings.modelTokens,
+              ...currentSettings.modelTokens,
               ...modelTokens,
             },
-          });
+          }, currentChatId);
         } catch (error) {
           console.error("Error fetching models:", error);
         } finally {
@@ -158,7 +200,7 @@ export default function Header() {
 
   // Get current prompts based on selected models
   const currentResearchPrompt = researchPrompts[researchModel] || "";
-  const currentWriterPrompt = writerPrompts[writerModel] || ""; // Don't fall back to default prompt
+  const currentWriterPrompt = writerPrompts[writerModel] || "";
 
   // Handle model changes
   const handleResearchModelChange = (value: ModelValue | "divider") => {
@@ -205,17 +247,21 @@ export default function Header() {
   };
 
   // Function to handle settings update
-  const handleUpdateSettings = () => {
-    saveSettings({
-      canvasModePrompt: getSettings().canvasModePrompt,
-      // canvasMode: getSettings().canvasMode,
+  const handleUpdateSettings = async () => {
+    if (!settings) return;
+    
+    const currentChatId = getCurrentChatId();
+    alert(currentChatId);
+    
+    await saveSettings({
+      canvasModePrompt: settings.canvasModePrompt,
       researchModel,
       writerModel,
       researchPrompts,
       writerPrompts,
-      modelTokens: getSettings().modelTokens, // Preserve existing model tokens,
-      canvasMode:JSON.parse(localStorage.getItem('canvasMode') || 'false')
-    });
+      modelTokens: settings.modelTokens,
+      canvasMode: JSON.parse(localStorage.getItem('canvasMode') || 'false')
+    }, currentChatId);
     setOpen(false);
   };
 

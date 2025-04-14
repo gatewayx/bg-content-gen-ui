@@ -3,135 +3,151 @@ import Sheet from "@mui/joy/Sheet";
 import MessagesPane from "./MessagesPane";
 import ChatsPane from "./ChatsPane";
 import { ChatProps, MessageProps } from "../components/types";
-import { chats } from "../components/data";
-import ChatService from "../services/SessionService";
-import { logError } from "../services/LoggerService";
 import { useSettings } from "../contexts/SettingsContext";
-
+import { useAuth } from "../contexts/AuthContext";
+import { createSession, getSessions, updateSession, deleteSession, sessionToChatProps } from "../services/SessionService";
 
 function getFormattedTime() {
   const now = new Date();
-  
   const day = new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(now);
   const time = now.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
   });
-
   return `${day} ${time}`;
 }
 
-export default function MyProfile() {
+export default function MyMessages() {
   const { settings } = useSettings();
+  const { user } = useAuth();
   const [sessions, setSessions] = React.useState<ChatProps[]>([]);
   const [selectedChat, setSelectedChat] = React.useState<ChatProps | null>(null);
-  const [isLoading,setIsLoading] = React.useState(false);
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [isInitialLoad, setIsInitialLoad] = React.useState(true);
 
-  // Load stored sessions on mount
+  // Load sessions from database on mount
   React.useEffect(() => {
-    const storedSessions = ChatService.getChatSessions();
-    if (storedSessions?.length) {
-      setSessions(storedSessions);
-      setSelectedChat(storedSessions[0]);
-    } else {
-      setSessions(chats);
-      setSelectedChat(chats[0]);
-    }
-  }, []);
-
-  // Save sessions whenever they change
-  React.useEffect(() => {
-    
-    if (sessions.length > 0) {
-      ChatService.setChatSessions(sessions);
-    }
-  }, [sessions]);
-
-  const handleNewSession = () => {
-    const timestamp = new Date().toLocaleString("en-US", {
-      month: "2-digit",
-      day: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: true,
-    });
-
-    const newSession: ChatProps = {
-      id: performance.now().toString(36).replace('.', ''),
-      sender: {
-        name: `Session ${sessions.length + 1}`,
-        username: timestamp,
-        avatar: "/static/images/avatar/5.jpg",
-        online: false,
-      },
-      messages: [],
-      messagesFT: [],
-      editorContent: "", // Initialize with empty editor content
+    const loadSessions = async () => {
+      try {
+        setIsLoading(true);
+        const dbSessions = await getSessions();
+        const chatSessions = dbSessions.map(sessionToChatProps);
+        
+        if (chatSessions.length > 0) {
+          setSessions(chatSessions);
+          setSelectedChat(chatSessions[0]);
+        } else if (isInitialLoad) {
+          // Only create a new session on initial load if no sessions exist
+          const newSession = await createSession('New Session');
+          const newChat = sessionToChatProps(newSession);
+          setSessions([newChat]);
+          setSelectedChat(newChat);
+          setIsInitialLoad(false);
+        }
+      } catch (error) {
+        console.error('Error loading sessions:', error);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
-    setSessions((prev) => [...prev, newSession]);
-    setSelectedChat(newSession);
+    loadSessions();
+  }, [isInitialLoad]);
+
+  const handleNewSession = async () => {
+    try {
+      setIsLoading(true);
+      const newSession = await createSession(`Session ${sessions.length + 1}`);
+      const newChat = sessionToChatProps(newSession);
+      
+      setSessions((prev) => [...prev, newChat]);
+      setSelectedChat(newChat);
+    } catch (error) {
+      console.error('Error creating new session:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-
-  const handleDeleteSession = (sessionId: string) => {
+  const handleDeleteSession = async (sessionId: string) => {
     if (sessions.length === 1) {
       alert("You cannot delete the last or only remaining session.");
       return;
     }
-  
-    // Check if the session exists
-    const sessionExists = sessions.some(session => session.id === sessionId);
-  
-    if (!sessionExists) {
-      alert("Session not found.");
-      return;
+
+    try {
+      setIsLoading(true);
+      await deleteSession(sessionId);
+      
+      // Update local state after successful deletion
+      const updatedSessions = sessions.filter(session => session.id !== sessionId);
+      setSessions(updatedSessions);
+      
+      // Select the first available session
+      if (selectedChat?.id === sessionId) {
+        setSelectedChat(updatedSessions[0]);
+      }
+    } catch (error) {
+      console.error('Error deleting session:', error);
+      alert('Failed to delete session. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
-  
-    // Proceed to delete the session
-    setSessions((prev) => prev.filter(session => session.id !== sessionId));
-    
-    // Optionally, you can also handle the case where the deleted session was the selected chat
-    setSelectedChat(sessions[0]); // Select the first session, or handle this based on your requirements
-  };
-  
-
-
-  // Function to handle new message addition from child component
-  const handleNewMessage = (newMessage: MessageProps) => {
-    // Only add canvas mode prompt to messages from the Research pane (right side)
-    // We don't add the prompt to messages from the Write pane (left side)
-    setSessions((prevSessions) =>
-      prevSessions.map((session) =>
-        session.id === selectedChat?.id
-          ? {
-              ...session,
-              messages: session.messages.some(msg => msg.id === newMessage.id)
-                ? session.messages.map(msg => msg.id === newMessage.id ? newMessage : msg)
-                : [...session.messages, newMessage]
-            }
-          : session
-      )
-    );
   };
 
-  const handleNewFTMessage = (newFTMessage: MessageProps) => {
-    // Remove the canvas mode prompt addition from here
-    setSessions((prevSessions) =>
-      prevSessions.map((session) =>
-        session.id === selectedChat?.id
-          ? {
-              ...session,
-              messagesFT: session.messagesFT.some(msg => msg.id === newFTMessage.id)
-                ? session.messagesFT.map(msg => msg.id === newFTMessage.id ? newFTMessage : msg)
-                : [...session.messagesFT, newFTMessage]
-            }
-          : session
-      )
-    );
+  const handleNewMessage = async (newMessage: MessageProps) => {
+    if (!selectedChat) return;
+
+    try {
+      const updatedMessages = selectedChat.messages.some(msg => msg.id === newMessage.id)
+        ? selectedChat.messages.map(msg => msg.id === newMessage.id ? newMessage : msg)
+        : [...selectedChat.messages, newMessage];
+
+      const updatedChat = {
+        ...selectedChat,
+        messages: updatedMessages
+      };
+
+      await updateSession(selectedChat.id, {
+        messages: updatedMessages
+      });
+
+      setSessions((prevSessions) =>
+        prevSessions.map((session) =>
+          session.id === selectedChat.id ? updatedChat : session
+        )
+      );
+    } catch (error) {
+      console.error('Error updating session with new message:', error);
+    }
+  };
+
+  const handleNewFTMessage = async (newFTMessage: MessageProps) => {
+    if (!selectedChat) return;
+
+    try {
+      const updatedMessagesFT = selectedChat.messagesFT.some(msg => msg.id === newFTMessage.id)
+        ? selectedChat.messagesFT.map(msg => msg.id === newFTMessage.id ? newFTMessage : msg)
+        : [...selectedChat.messagesFT, newFTMessage];
+
+      const updatedChat = {
+        ...selectedChat,
+        messagesFT: updatedMessagesFT
+      };
+
+      await updateSession(selectedChat.id, {
+        messagesFT: updatedMessagesFT
+      });
+
+      setSessions((prevSessions) =>
+        prevSessions.map((session) =>
+          session.id === selectedChat.id ? updatedChat : session
+        )
+      );
+    } catch (error) {
+      console.error('Error updating session with new FT message:', error);
+    }
   };
 
   return (
@@ -173,7 +189,15 @@ export default function MyProfile() {
         )}
       </Sheet>
 
-      {selectedChat && <MessagesPane isLoading={isLoading} setIsLoading={setIsLoading} handleNewMessage={handleNewMessage} chat={selectedChat} handleNewFTMessage={handleNewFTMessage} />}
+      {selectedChat && (
+        <MessagesPane
+          isLoading={isLoading}
+          setIsLoading={setIsLoading}
+          handleNewMessage={handleNewMessage}
+          chat={selectedChat}
+          handleNewFTMessage={handleNewFTMessage}
+        />
+      )}
     </Sheet>
   );
 }
