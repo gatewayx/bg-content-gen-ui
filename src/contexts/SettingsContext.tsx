@@ -1,29 +1,47 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Settings, getSettings } from '../services/SettingsService';
+import { Settings, getSettings, saveSettings } from '../services/SettingsService';
 
 interface SettingsContextType {
   settings: Settings;
-  updateSettings: (newSettings: Partial<Settings>) => void;
+  updateSettings: (newSettings: Partial<Settings>, saveToDb?: boolean) => void;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
 export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [settings, setSettings] = useState<Settings>(getSettings());
+  const [settings, setSettings] = useState<Settings>({
+    canvasModePrompt: '',
+    canvasMode: false,
+    researchModel: 'o1',
+    writerModel: 'jessievoice',
+    researchPrompts: {},
+    writerPrompts: {},
+    modelTokens: {}
+  });
 
-  const updateSettings = (newSettings: Partial<Settings>) => {
+  const updateSettings = async (newSettings: Partial<Settings>, saveToDb: boolean = false) => {
     const updatedSettings = { ...settings, ...newSettings };
     setSettings(updatedSettings);
     localStorage.setItem('settings', JSON.stringify(updatedSettings));
+    
+    if (saveToDb) {
+      const currentChatId = localStorage.getItem('selectedChatId');
+      if (currentChatId) {
+        await saveSettings(updatedSettings, currentChatId);
+      }
+    }
   };
 
+  // Only fetch settings on initial load
   useEffect(() => {
-    const handleStorageChange = () => {
-      setSettings(getSettings());
+    const loadSettings = async () => {
+      const currentChatId = localStorage.getItem('selectedChatId');
+      if (currentChatId) {
+        const loadedSettings = await getSettings(currentChatId);
+        setSettings(loadedSettings);
+      }
     };
-
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+    loadSettings();
   }, []);
 
   return (

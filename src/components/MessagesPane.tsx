@@ -1,25 +1,38 @@
-import * as React from "react";
+import React, { useRef, useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
 import Box from "@mui/joy/Box";
 import Sheet from "@mui/joy/Sheet";
 import Stack from "@mui/joy/Stack";
-import AvatarWithStatus from "./AvatarWithStatus";
+import List from "@mui/joy/List";
+import ListItem from "@mui/joy/ListItem";
+import ListItemButton from "@mui/joy/ListItemButton";
+import ListItemDecorator from "@mui/joy/ListItemDecorator";
+import ListItemContent from "@mui/joy/ListItemContent";
+import Typography from "@mui/joy/Typography";
+import Avatar from "@mui/joy/Avatar";
+import AvatarGroup from "@mui/joy/AvatarGroup";
+import IconButton from "@mui/joy/IconButton";
+import FormControl from "@mui/joy/FormControl";
+import FormHelperText from "@mui/joy/FormHelperText";
+import Textarea from "@mui/joy/Textarea";
+import SendIcon from "@mui/icons-material/Send";
+import StopIcon from "@mui/icons-material/Stop";
+import OpenInFullIcon from '@mui/icons-material/OpenInFull';
+import CloseFullscreenIcon from '@mui/icons-material/CloseFullscreen';
 import ChatBubble from "./ChatBubble";
 import MessageInput from "./MessageInput";
+import AvatarWithStatus from "./AvatarWithStatus";
 import { ChatProps, MessageProps, UserProps } from "../components/types";
-import Typography from "@mui/joy/Typography";
 import { logError } from "../services/LoggerService";
-import { useRef } from "react";
 import Button from "@mui/joy/Button";
-import StopIcon from "@mui/icons-material/Stop";
-import { getSettings } from "../services/SettingsService";
-import { getModelDisplayName } from "../constants";
-import { createChatCompletion } from "../services/OpenAIService";
-import IconButton from "@mui/joy/IconButton";
-import CloseFullscreenIcon from '@mui/icons-material/CloseFullscreen';
-import OpenInFullIcon from '@mui/icons-material/OpenInFull';
 import SimpleEditor from "./SimpleEditor";
 import EditIcon from "@mui/icons-material/Edit";
 import Link from "@mui/joy/Link";
+import { useSettings } from "../contexts/SettingsContext";
+import { supabase } from "../lib/supabase";
+import { createChatCompletion } from "../services/OpenAIService";
+import { getSettings } from "../services/SettingsService";
+import { getModelDisplayName } from "../constants";
 // Import VITE_CANVAS_MODE_PROMPT from environment variables
 const VITE_CANVAS_MODE_PROMPT = import.meta.env.VITE_CANVAS_MODE_PROMPT || '';
 
@@ -66,6 +79,8 @@ export default function MessagesPane(props: MessagesPaneProps) {
   const [ftChatMessages, setftChatMessages] = React.useState<MessageProps[]>([]);
   const [textAreaValue, setTextAreaValue] = React.useState("");
   const [emptyTextAreaValue, setEmptyTextAreaValue] = React.useState("");
+  const [researchPrompts, setResearchPrompts] = React.useState<Record<string, string>>({});
+  const [writerPrompts, setWriterPrompts] = React.useState<Record<string, string>>({});
   const abortControllerRef = useRef<AbortController>(null);
   const abortControllerRefFT = useRef<AbortController>(null);
   
@@ -76,66 +91,219 @@ export default function MessagesPane(props: MessagesPaneProps) {
   // Track if editor is visible
   const [editorVisible, setEditorVisible] = React.useState(false);
 
-  // Get current settings and update when they change
-  const [settings, setSettings] = React.useState(getSettings(chat.id));
-
-  // Update settings when they change
-  // React.useEffect(() => {
-  //   const handleSettingsChange = () => {
-  //     setSettings(getSettings(sessionId));
-  //   };
-
-  //   // Listen for storage changes
-  //   window.addEventListener('storage', handleSettingsChange);
-    
-  //   return () => {
-  //     window.removeEventListener('storage', handleSettingsChange);
-  //   };
-  // }, []);
+  // Get settings from context
+  const { settings } = useSettings();
 
   // Get session ID from chat object
   const sessionId = chat.id || 'default';
 
-  // Load session state from local storage on component mount or when session changes
-  React.useEffect(() => {
-    
-    const savedSession = localStorage.getItem(`chat_sessions`);
-    
-    if (savedSession) {
-      try {
-        const sessionState = JSON.parse(savedSession);
-        const selected = sessionState.filter((obj:ChatProps) => obj.id == chat.id)[0];
+  // Convert database messages to MessageProps format
+  const convertToMessageProps = (messages: any[], isFT: boolean = false): MessageProps[] => {
+    if (!messages || messages.length === 0) {
+      return [];
+    }
+    return messages.map(msg => ({
+      id: msg.id.toString(),
+      sender: msg.role === 'user' ? 'You' : {
+        name: "Session 1",
+        username: new Date(msg.created_at).toLocaleString(),
+        avatar: "/static/images/avatar/3.jpg",
+        online: true,
+      },
+      content: msg.content,
+      timestamp: new Date(msg.created_at).toLocaleTimeString("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      }),
+      canvasMode: isFT ? editorVisible : false
+    }));
+  };
 
-        // find the last message from the selected session, sender is not you
-        const lastMessage = selected.messagesFT[selected.messagesFT.length - 1];
-        if (lastMessage && lastMessage.sender !== "You") {
-          setEditorContent(lastMessage.content);
-        } else {
-          setEditorContent("");
+  // Function to fetch messages for a session
+  const fetchSessionMessages = async (sessionId: string) => {
+    try {
+      // Fetch research messages (interface: 0)
+      const { data: researchMessages, error: researchError } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('session_id', sessionId)
+        .eq('interface', 0)
+        .order('created_at', { ascending: true });
+
+      // Fetch writer messages (interface: 1)
+      const { data: writerMessages, error: writerError } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('session_id', sessionId)
+        .eq('interface', 1)
+        .order('created_at', { ascending: true });
+
+      if (researchError || writerError) {
+        console.error('Error fetching messages:', researchError || writerError);
+        return { messages: [], messagesFT: [] };
+      }
+
+      return {
+        messages: convertToMessageProps(researchMessages || []),
+        messagesFT: convertToMessageProps(writerMessages || [], true)
+      };
+    } catch (error) {
+      console.error('Error in fetchSessionMessages:', error);
+      return { messages: [], messagesFT: [] };
+    }
+  };
+
+  // Function to fetch messages for all sessions
+  const fetchAllSessionMessages = async (sessions: ChatProps[]) => {
+    try {
+      // Get all session IDs
+      const sessionIds = sessions.map(session => session.id);
+      
+      // Fetch all messages for these sessions
+      const { data: allMessages, error } = await supabase
+        .from('messages')
+        .select('*')
+        .in('session_id', sessionIds)
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching all messages:', error);
+        return {};
+      }
+
+      // Group messages by session_id and interface
+      const messagesBySession: Record<string, { messages: any[], messagesFT: any[] }> = {};
+      
+      allMessages?.forEach(msg => {
+        if (!messagesBySession[msg.session_id]) {
+          messagesBySession[msg.session_id] = { messages: [], messagesFT: [] };
         }
         
-        setChatMessages(selected.messages);
-        setftChatMessages(selected.messagesFT);
-        setTextAreaValue(selected.textAreaValue || ""); // Load research textarea value
-        setEmptyTextAreaValue(selected.emptyTextAreaValue || ""); // Load write textarea value
-      } catch (error) {
-        console.error('Error loading session state:', error);
-        // Reset to empty arrays if there's an error
+        if (msg.interface === 0) {
+          messagesBySession[msg.session_id].messages.push(msg);
+        } else {
+          messagesBySession[msg.session_id].messagesFT.push(msg);
+        }
+      });
+
+      // Convert messages to MessageProps format for each session
+      const convertedMessages: Record<string, { messages: MessageProps[], messagesFT: MessageProps[] }> = {};
+      
+      Object.entries(messagesBySession).forEach(([sessionId, msgs]) => {
+        convertedMessages[sessionId] = {
+          messages: convertToMessageProps(msgs.messages),
+          messagesFT: convertToMessageProps(msgs.messagesFT, true)
+        };
+      });
+
+      return convertedMessages;
+    } catch (error) {
+      console.error('Error in fetchAllSessionMessages:', error);
+      return {};
+    }
+  };
+
+  // Load session state from local storage on component mount or when session changes
+  React.useEffect(() => {
+    const loadSessions = async () => {
+      const savedSession = localStorage.getItem(`chat_sessions`);
+      
+      if (savedSession) {
+        try {
+          const sessionState = JSON.parse(savedSession);
+          const selected = sessionState.filter((obj:ChatProps) => obj.id == chat.id)[0];
+          console.log('selected session', chat.id);
+          
+          // Update selectedChatId in localStorage
+          localStorage.setItem('selectedChatId', chat.id);
+          
+          // Only fetch messages if they don't exist in the session
+          if (!selected.messages || !selected.messagesFT) {
+            // Fetch messages for all sessions
+            const allMessages = await fetchAllSessionMessages(sessionState);
+            
+            // Update each session with its messages
+            const updatedSessions = sessionState.map((session: ChatProps) => {
+              const sessionMessages = allMessages[session.id] || { messages: [], messagesFT: [] };
+              return {
+                ...session,
+                messages: sessionMessages.messages,
+                messagesFT: sessionMessages.messagesFT,
+                textAreaValue: session.textAreaValue || "",
+                emptyTextAreaValue: session.emptyTextAreaValue || "",
+                editorContent: session.editorContent || ""
+              };
+            });
+            
+            // Save updated sessions back to localStorage
+            localStorage.setItem(`chat_sessions`, JSON.stringify(updatedSessions));
+            
+            // Update local state with selected session's messages
+            const selectedMessages = allMessages[chat.id] || { messages: [], messagesFT: [] };
+            setChatMessages(selectedMessages.messages);
+            setftChatMessages(selectedMessages.messagesFT);
+          } else {
+            // Use existing messages from the session
+            setChatMessages(selected.messages);
+            setftChatMessages(selected.messagesFT);
+          }
+          
+          // find the last message from the selected session, sender is not you
+          const lastMessage = selected.messagesFT[selected.messagesFT.length - 1];
+          if (lastMessage && lastMessage.sender !== "You") {
+            setEditorContent(lastMessage.content);
+          } else {
+            setEditorContent("");
+          }
+          
+          setTextAreaValue(selected.textAreaValue || ""); // Load research textarea value
+          setEmptyTextAreaValue(selected.emptyTextAreaValue || ""); // Load write textarea value
+
+          // Load saved prompts for current models
+          const settings = JSON.parse(localStorage.getItem('settings') || '{}');
+          const sessionSettings = settings[chat.id] || {};
+          
+          if (sessionSettings.researchPrompts && sessionSettings.researchModel) {
+            const researchPrompt = sessionSettings.researchPrompts[sessionSettings.researchModel];
+            if (researchPrompt) {
+              setResearchPrompts(prev => ({
+                ...prev,
+                [sessionSettings.researchModel]: researchPrompt
+              }));
+            }
+          }
+
+          if (sessionSettings.writerPrompts && sessionSettings.writerModel) {
+            const writerPrompt = sessionSettings.writerPrompts[sessionSettings.writerModel];
+            if (writerPrompt) {
+              setWriterPrompts(prev => ({
+                ...prev,
+                [sessionSettings.writerModel]: writerPrompt
+              }));
+            }
+          }
+        } catch (error) {
+          console.error('Error loading session state:', error);
+          // Reset to empty arrays if there's an error
+          setChatMessages([]);
+          setftChatMessages([]);
+          setEditorContent(""); // Reset editor content
+          setTextAreaValue(""); // Reset research textarea
+          setEmptyTextAreaValue(""); // Reset write textarea
+        }
+      } else {
+        // Reset to empty arrays for new sessions
         setChatMessages([]);
         setftChatMessages([]);
         setEditorContent(""); // Reset editor content
         setTextAreaValue(""); // Reset research textarea
         setEmptyTextAreaValue(""); // Reset write textarea
       }
-    } else {
-      // Reset to empty arrays for new sessions
-      setChatMessages([]);
-      setftChatMessages([]);
-      setEditorContent(""); // Reset editor content
-      setTextAreaValue(""); // Reset research textarea
-      setEmptyTextAreaValue(""); // Reset write textarea
-    }
-  }, [sessionId]);
+    };
+
+    loadSessions();
+  }, [chat.id]);
 
   // Save editor content and textarea values to session state when they change
   React.useEffect(() => {
@@ -206,7 +374,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
       abortControllerRef.current = newAbortController;
 
       // Get settings for research model and prompt
-      const settings = getSettings();
+      const settings = await getSettings(chat.id);
 
       const newId = chatMessages.length;
       const initialMessages: MessageProps[] = [
@@ -231,6 +399,28 @@ export default function MessagesPane(props: MessagesPaneProps) {
       ];
 
       setChatMessages(initialMessages);
+
+      // Save user message to database
+      try {
+        const { error: userMessageError } = await supabase
+          .from('messages')
+          .insert([
+            {
+              role: 'user',
+              content: textAreaValue,
+              session_id: chat.id,
+              interface: 0, // Research interface
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }
+          ]);
+
+        if (userMessageError) {
+          console.error('Error saving user message:', userMessageError);
+        }
+      } catch (error) {
+        console.error('Error saving user message:', error);
+      }
 
       handleNewMessage({
         id: (newId + 1).toString(),
@@ -279,6 +469,28 @@ export default function MessagesPane(props: MessagesPaneProps) {
         }
       }
 
+      // Save assistant message to database
+      try {
+        const { error: assistantMessageError } = await supabase
+          .from('messages')
+          .insert([
+            {
+              role: 'assistant',
+              content: fullMessage,
+              session_id: chat.id,
+              interface: 0, // Research interface
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }
+          ]);
+
+        if (assistantMessageError) {
+          console.error('Error saving assistant message:', assistantMessageError);
+        }
+      } catch (error) {
+        console.error('Error saving assistant message:', error);
+      }
+
       // Save the final state of messages after completion
       setChatMessages((prevMessages) => {
         const finalMessages = [...prevMessages];
@@ -314,7 +526,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
       abortControllerRefFT.current = newAbortController;
 
       // Get settings for writer model and prompt
-      const settings = getSettings();
+      const settings = await getSettings(chat.id);
 
       const newId = ftChatMessages.length;
       const initialMessages: MessageProps[] = [
@@ -340,6 +552,28 @@ export default function MessagesPane(props: MessagesPaneProps) {
       ];
 
       setftChatMessages(initialMessages);
+
+      // Save user message to database
+      try {
+        const { error: userMessageError } = await supabase
+          .from('messages')
+          .insert([
+            {
+              role: 'user',
+              content: emptyTextAreaValue,
+              session_id: chat.id,
+              interface: 1, // Writer interface
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }
+          ]);
+
+        if (userMessageError) {
+          console.error('Error saving user message:', userMessageError);
+        }
+      } catch (error) {
+        console.error('Error saving user message:', error);
+      }
 
       handleNewFTMessage({
         id: (newId + 1).toString(),
@@ -370,7 +604,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
           messages.push({ role: "assistant", content: msg.content });
         }
       });
-      
+
       // Add current user message
       let currentMessage = emptyTextAreaValue;
       if (canvasMode) {
@@ -400,6 +634,28 @@ export default function MessagesPane(props: MessagesPaneProps) {
             return updatedMessages;
           });
         }
+      }
+
+      // Save assistant message to database
+      try {
+        const { error: assistantMessageError } = await supabase
+          .from('messages')
+          .insert([
+            {
+              role: 'assistant',
+              content: fullMessage,
+              session_id: chat.id,
+              interface: 1, // Writer interface
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }
+          ]);
+
+        if (assistantMessageError) {
+          console.error('Error saving assistant message:', assistantMessageError);
+        }
+      } catch (error) {
+        console.error('Error saving assistant message:', error);
       }
 
       // Save the final state of messages after completion

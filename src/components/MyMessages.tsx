@@ -6,6 +6,7 @@ import { ChatProps, MessageProps } from "../components/types";
 import { useSettings } from "../contexts/SettingsContext";
 import { useAuth } from "../contexts/AuthContext";
 import { createSession, getSessions, updateSession, deleteSession, sessionToChatProps } from "../services/SessionService";
+import { loadAllSessionSettings } from "../services/SettingsService";
 
 function getFormattedTime() {
   const now = new Date();
@@ -34,15 +35,29 @@ export default function MyMessages() {
         const dbSessions = await getSessions();
         const chatSessions = dbSessions.map(sessionToChatProps);
         
+        // Save sessions to localStorage
+        localStorage.setItem('chat_sessions', JSON.stringify(chatSessions));
+        
+        // Load settings for all sessions
+        await loadAllSessionSettings(chatSessions.map(session => session.id));
+        
         if (chatSessions.length > 0) {
           setSessions(chatSessions);
           setSelectedChat(chatSessions[0]);
+          // Save selected chat ID to localStorage
+          localStorage.setItem('selectedChatId', chatSessions[0].id);
         } else if (isInitialLoad) {
           // Only create a new session on initial load if no sessions exist
           const newSession = await createSession('New Session');
           const newChat = sessionToChatProps(newSession);
-          setSessions([newChat]);
+          const newSessions = [newChat];
+          setSessions(newSessions);
           setSelectedChat(newChat);
+          // Save new session to localStorage
+          localStorage.setItem('chat_sessions', JSON.stringify(newSessions));
+          localStorage.setItem('selectedChatId', newChat.id);
+          // Load settings for the new session
+          await loadAllSessionSettings([newChat.id]);
           setIsInitialLoad(false);
         }
       } catch (error) {
@@ -53,16 +68,21 @@ export default function MyMessages() {
     };
 
     loadSessions();
-  }, [isInitialLoad]);
+  }, []);
 
   const handleNewSession = async () => {
     try {
       setIsLoading(true);
       const newSession = await createSession(`Session ${sessions.length + 1}`);
       const newChat = sessionToChatProps(newSession);
+      const updatedSessions = [...sessions, newChat];
       
-      setSessions((prev) => [...prev, newChat]);
+      setSessions(updatedSessions);
       setSelectedChat(newChat);
+      
+      // Update localStorage
+      localStorage.setItem('chat_sessions', JSON.stringify(updatedSessions));
+      localStorage.setItem('selectedChatId', newChat.id);
     } catch (error) {
       console.error('Error creating new session:', error);
     } finally {
@@ -87,7 +107,11 @@ export default function MyMessages() {
       // Select the first available session
       if (selectedChat?.id === sessionId) {
         setSelectedChat(updatedSessions[0]);
+        localStorage.setItem('selectedChatId', updatedSessions[0].id);
       }
+      
+      // Update localStorage
+      localStorage.setItem('chat_sessions', JSON.stringify(updatedSessions));
     } catch (error) {
       console.error('Error deleting session:', error);
       alert('Failed to delete session. Please try again.');

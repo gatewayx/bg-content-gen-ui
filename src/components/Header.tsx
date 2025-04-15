@@ -75,9 +75,18 @@ export default function Header() {
         const currentChatId = getCurrentChatId();
         const loadedSettings = await getSettings(currentChatId);
         setSettings(loadedSettings);
+        // Set initial state values
+        setResearchModel(loadedSettings.researchModel);
+        setWriterModel(loadedSettings.writerModel);
+        setResearchPrompts(loadedSettings.researchPrompts);
+        setWriterPrompts(loadedSettings.writerPrompts);
       } catch (error) {
         console.error('Error loading settings:', error);
         setSettings(DEFAULT_SETTINGS);
+        setResearchModel(DEFAULT_MODELS.RESEARCH);
+        setWriterModel(DEFAULT_MODELS.WRITER);
+        setResearchPrompts({});
+        setWriterPrompts({});
       }
     };
     loadSettings();
@@ -95,21 +104,6 @@ export default function Header() {
   const [writerPrompts, setWriterPrompts] = React.useState<Record<string, string>>(
     settings?.writerPrompts || {}
   );
-
-  // Update state when settings change
-  React.useEffect(() => {
-    const updateStateFromSettings = async () => {
-      const currentChatId = getCurrentChatId();
-      const currentSettings = await getSettings(currentChatId);
-      if (currentSettings) {
-        setResearchModel(currentSettings.researchModel);
-        setWriterModel(currentSettings.writerModel);
-        setResearchPrompts(currentSettings.researchPrompts);
-        setWriterPrompts(currentSettings.writerPrompts);
-      }
-    };
-    updateStateFromSettings();
-  }, [settings]);
 
   // Ensure writer model is set on mount
   React.useEffect(() => {
@@ -170,7 +164,7 @@ export default function Header() {
             ...newModels,
           ]);
 
-          // Update settings with model tokens
+          // Update local state with model tokens without saving to database
           const currentChatId = getCurrentChatId();
           const currentSettings = await getSettings(currentChatId);
           const modelTokens = newModels.reduce((acc, model) => {
@@ -179,14 +173,14 @@ export default function Header() {
             }
             return acc;
           }, {} as Record<string, string>);
-          alert(currentChatId);
-          await saveSettings({
+          
+          setSettings({
             ...currentSettings,
             modelTokens: {
               ...currentSettings.modelTokens,
               ...modelTokens,
             },
-          }, currentChatId);
+          });
         } catch (error) {
           console.error("Error fetching models:", error);
         } finally {
@@ -251,8 +245,12 @@ export default function Header() {
     if (!settings) return;
     
     const currentChatId = getCurrentChatId();
-    alert(currentChatId);
+    if (!currentChatId) {
+      console.error('No valid session ID found');
+      return;
+    }
     
+    // Save to Supabase only when triggered from drawer
     await saveSettings({
       canvasModePrompt: settings.canvasModePrompt,
       researchModel,
@@ -262,6 +260,16 @@ export default function Header() {
       modelTokens: settings.modelTokens,
       canvasMode: JSON.parse(localStorage.getItem('canvasMode') || 'false')
     }, currentChatId);
+    
+    // Update local state
+    setSettings({
+      ...settings,
+      researchModel,
+      writerModel,
+      researchPrompts,
+      writerPrompts
+    });
+    
     setOpen(false);
   };
 

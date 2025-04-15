@@ -17,7 +17,7 @@ export const createSession = async (label: string): Promise<Session> => {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('No authenticated user');
 
-  const now = new Date().toISOString();
+  const now = new Date().toISOString().replace('Z', '+00:00');
   const { data, error } = await supabase
     .from('sessions')
     .insert([
@@ -55,7 +55,7 @@ export const getSessions = async (): Promise<Session[]> => {
 };
 
 export const updateSession = async (sessionId: string, updates: Partial<Session>): Promise<Session> => {
-  const now = new Date().toISOString();
+  const now = new Date().toISOString().replace('Z', '+00:00');
   const { data, error } = await supabase
     .from('sessions')
     .update({
@@ -71,7 +71,7 @@ export const updateSession = async (sessionId: string, updates: Partial<Session>
 };
 
 export const deleteSession = async (sessionId: string): Promise<void> => {
-  const now = new Date().toISOString();
+  const now = new Date().toISOString().replace('Z', '+00:00');
   const { error } = await supabase
     .from('sessions')
     .update({

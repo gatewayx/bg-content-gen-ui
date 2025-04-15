@@ -32,6 +32,8 @@ export interface Setting {
   created_at: string;
   updated_at: string;
   unique_user_key: string;
+  user_id: string;
+  session_id: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -83,7 +85,7 @@ export const getSettings = async (sessionId: string): Promise<Settings> => {
       const { data, error } = await supabase
         .from('settings')
         .select('*')
-        .like('unique_user_key', `%_${sessionId}`);
+        .or(`unique_user_key.eq.${SETTINGS_KEYS.WRITER_MODEL}_${sessionId},unique_user_key.eq.${SETTINGS_KEYS.RESEARCH_MODEL}_${sessionId},unique_user_key.like.${SETTINGS_KEYS.WRITER_SYSTEM_PROMPT}_%_${sessionId},unique_user_key.like.${SETTINGS_KEYS.RESEARCH_SYSTEM_PROMPT}_%_${sessionId},unique_user_key.like.${SETTINGS_KEYS.WRITER_TOKENS}_%_${sessionId},unique_user_key.like.${SETTINGS_KEYS.RESEARCH_TOKENS}_%_${sessionId}`);
 
       if (error) {
         console.error('Error fetching settings from database:', error);
@@ -95,6 +97,10 @@ export const getSettings = async (sessionId: string): Promise<Settings> => {
       data?.forEach(setting => {
         if (!setting || !setting.key || !setting.value) return;
 
+        // Extract model ID from unique_user_key if present
+        const parts = setting.unique_user_key.split('_');
+        const modelId = parts.length > 2 ? parts[1] : undefined;
+
         switch (setting.key) {
           case SETTINGS_KEYS.WRITER_MODEL:
             if (setting.value) settings.writerModel = setting.value;
@@ -103,16 +109,16 @@ export const getSettings = async (sessionId: string): Promise<Settings> => {
             if (setting.value) settings.researchModel = setting.value;
             break;
           case SETTINGS_KEYS.WRITER_SYSTEM_PROMPT:
-            if (setting.value) settings.writerPrompts[settings.writerModel] = setting.value;
+            if (setting.value && modelId) settings.writerPrompts[modelId] = setting.value;
             break;
           case SETTINGS_KEYS.RESEARCH_SYSTEM_PROMPT:
-            if (setting.value) settings.researchPrompts[settings.researchModel] = setting.value;
+            if (setting.value && modelId) settings.researchPrompts[modelId] = setting.value;
             break;
           case SETTINGS_KEYS.WRITER_TOKENS:
-            if (setting.value) settings.modelTokens[settings.writerModel] = setting.value;
+            if (setting.value && modelId) settings.modelTokens[modelId] = setting.value;
             break;
           case SETTINGS_KEYS.RESEARCH_TOKENS:
-            if (setting.value) settings.modelTokens[settings.researchModel] = setting.value;
+            if (setting.value && modelId) settings.modelTokens[modelId] = setting.value;
             break;
         }
       });
@@ -123,13 +129,10 @@ export const getSettings = async (sessionId: string): Promise<Settings> => {
     if (storedSettings) {
       try {
         const parsedSettings = JSON.parse(storedSettings);
-        // Only use valid settings from local storage
-        if (parsedSettings && typeof parsedSettings === 'object') {
-          Object.assign(settings, parsedSettings);
-          // Only save to database if we have a session ID
-          if (sessionId) {
-            await saveSettings(settings, sessionId);
-          }
+        // Get settings for the specific session
+        const sessionSettings = parsedSettings[sessionId];
+        if (sessionSettings && typeof sessionSettings === 'object') {
+          Object.assign(settings, sessionSettings);
         }
       } catch (e) {
         console.error('Error parsing local storage settings:', e);
@@ -157,7 +160,9 @@ export const getSettings = async (sessionId: string): Promise<Settings> => {
     lastFetchTime = now;
 
     // Save to local storage for backward compatibility
-    localStorage.setItem('settings', JSON.stringify(settings));
+    const currentStoredSettings = JSON.parse(localStorage.getItem('settings') || '{}');
+    currentStoredSettings[sessionId] = settings;
+    localStorage.setItem('settings', JSON.stringify(currentStoredSettings));
 
     console.log('Settings fetched and cached successfully');
     isFetching = false;
@@ -176,20 +181,35 @@ export const clearSettingsCache = () => {
 };
 
 export const saveSettings = async (settings: Partial<Settings>, sessionId: string): Promise<void> => {
-  if (!sessionId) throw new Error('Session ID is required');
+  if (!sessionId) {
+    console.error('Session ID is required for saving settings');
+    return;
+  }
+
+  // Get current user
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    console.error('No authenticated user found');
+    return;
+  }
 
   const now = new Date().toISOString();
   const updates: Partial<Setting>[] = [];
 
   // Helper function to validate and add setting
-  const addSetting = (key: SettingKey, value: string | undefined) => {
+  const addSetting = (key: SettingKey, value: string | undefined, modelId?: string) => {
     if (value !== undefined && value !== null && value !== '') {
+      // Create unique key with model ID if provided
+      const uniqueKey = modelId ? `${key}_${modelId}_${sessionId}` : `${key}_${sessionId}`;
+      
       updates.push({
         key,
         value,
         created_at: now,
         updated_at: now,
-        unique_user_key: `${key}_${sessionId}`
+        unique_user_key: uniqueKey,
+        user_id: user.id,
+        session_id: sessionId
       });
     }
   };
@@ -205,22 +225,22 @@ export const saveSettings = async (settings: Partial<Settings>, sessionId: strin
 
   if (settings.writerPrompts && settings.writerModel) {
     const promptValue = settings.writerPrompts[settings.writerModel];
-    addSetting(SETTINGS_KEYS.WRITER_SYSTEM_PROMPT, promptValue);
+    addSetting(SETTINGS_KEYS.WRITER_SYSTEM_PROMPT, promptValue, settings.writerModel);
   }
 
   if (settings.researchPrompts && settings.researchModel) {
     const promptValue = settings.researchPrompts[settings.researchModel];
-    addSetting(SETTINGS_KEYS.RESEARCH_SYSTEM_PROMPT, promptValue);
+    addSetting(SETTINGS_KEYS.RESEARCH_SYSTEM_PROMPT, promptValue, settings.researchModel);
   }
 
   if (settings.modelTokens) {
     if (settings.writerModel) {
       const tokenValue = settings.modelTokens[settings.writerModel];
-      addSetting(SETTINGS_KEYS.WRITER_TOKENS, tokenValue);
+      addSetting(SETTINGS_KEYS.WRITER_TOKENS, tokenValue, settings.writerModel);
     }
     if (settings.researchModel) {
       const tokenValue = settings.modelTokens[settings.researchModel];
-      addSetting(SETTINGS_KEYS.RESEARCH_TOKENS, tokenValue);
+      addSetting(SETTINGS_KEYS.RESEARCH_TOKENS, tokenValue, settings.researchModel);
     }
   }
 
@@ -240,6 +260,14 @@ export const saveSettings = async (settings: Partial<Settings>, sessionId: strin
     
     // Clear the cache after saving
     clearSettingsCache();
+
+    // Save to local storage with session ID as key
+    const currentStoredSettings = JSON.parse(localStorage.getItem('settings') || '{}');
+    currentStoredSettings[sessionId] = {
+      ...currentStoredSettings[sessionId],
+      ...settings
+    };
+    localStorage.setItem('settings', JSON.stringify(currentStoredSettings));
   }
 };
 
@@ -267,7 +295,7 @@ export const setSetting = async (key: SettingKey, value: string): Promise<void> 
       value,
       updated_at: now
     }, {
-      onConflict: 'user_id,key'
+      onConflict: 'unique_user_key'
     });
 
   if (error) throw error;
@@ -286,4 +314,83 @@ export const getAllSettings = async (): Promise<Record<SettingKey, string>> => {
   });
 
   return settings;
+};
+
+export const loadAllSessionSettings = async (sessionIds: string[]): Promise<void> => {
+  try {
+    // Get current user
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      console.error('No authenticated user found');
+      return;
+    }
+
+    // Initialize localStorage structure if it doesn't exist
+    const currentStoredSettings = JSON.parse(localStorage.getItem('settings') || '{}');
+
+    // Load settings for each session
+    for (const sessionId of sessionIds) {
+      try {
+        const { data, error } = await supabase
+          .from('settings')
+          .select('*')
+          .eq('session_id', sessionId)
+          .eq('user_id', user.id);
+
+        if (error) {
+          console.error(`Error fetching settings for session ${sessionId}:`, error);
+          // Use default settings if there's an error
+          currentStoredSettings[sessionId] = DEFAULT_SETTINGS;
+          continue;
+        }
+
+        // If no settings found, use default settings
+        if (!data || data.length === 0) {
+          currentStoredSettings[sessionId] = DEFAULT_SETTINGS;
+          continue;
+        }
+
+        // Start with default settings
+        const settings = { ...DEFAULT_SETTINGS };
+
+        // Update with database values
+        data.forEach(setting => {
+          if (!setting || !setting.key || !setting.value) return;
+
+          switch (setting.key) {
+            case SETTINGS_KEYS.WRITER_MODEL:
+              if (setting.value) settings.writerModel = setting.value;
+              break;
+            case SETTINGS_KEYS.RESEARCH_MODEL:
+              if (setting.value) settings.researchModel = setting.value;
+              break;
+            case SETTINGS_KEYS.WRITER_SYSTEM_PROMPT:
+              if (setting.value) settings.writerPrompts[settings.writerModel] = setting.value;
+              break;
+            case SETTINGS_KEYS.RESEARCH_SYSTEM_PROMPT:
+              if (setting.value) settings.researchPrompts[settings.researchModel] = setting.value;
+              break;
+            case SETTINGS_KEYS.WRITER_TOKENS:
+              if (setting.value) settings.modelTokens[settings.writerModel] = setting.value;
+              break;
+            case SETTINGS_KEYS.RESEARCH_TOKENS:
+              if (setting.value) settings.modelTokens[settings.researchModel] = setting.value;
+              break;
+          }
+        });
+
+        // Save to localStorage
+        currentStoredSettings[sessionId] = settings;
+      } catch (error) {
+        console.error(`Error processing settings for session ${sessionId}:`, error);
+        // Use default settings if there's an error
+        currentStoredSettings[sessionId] = DEFAULT_SETTINGS;
+      }
+    }
+
+    // Save all settings to localStorage
+    localStorage.setItem('settings', JSON.stringify(currentStoredSettings));
+  } catch (error) {
+    console.error('Error loading all session settings:', error);
+  }
 }; 
