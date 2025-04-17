@@ -13,6 +13,12 @@ export interface Session {
   messagesFT: MessageProps[];
 }
 
+export interface ModelExtension {
+  model_id: string;
+  suffix: string;
+  key: string;
+}
+
 export const createSession = async (label: string): Promise<Session> => {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('No authenticated user');
@@ -41,7 +47,26 @@ export const createSession = async (label: string): Promise<Session> => {
   };
 };
 
+export const fetchModelExtensions = async (): Promise<ModelExtension[]> => {
+  const { data, error } = await supabase
+    .from('system')
+    .select('model_id, suffix, key')
+    .eq('is_active', true);
+
+  if (error) {
+    console.error('Error fetching model extensions:', error);
+    return [];
+  }
+
+  // Store in localStorage
+  localStorage.setItem('model_extensions', JSON.stringify(data || []));
+  return data || [];
+};
+
 export const getSessions = async (): Promise<Session[]> => {
+  // Fetch model extensions first
+  await fetchModelExtensions();
+
   const { data, error } = await supabase
     .from('sessions')
     .select('*')

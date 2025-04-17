@@ -175,21 +175,49 @@ export default function Header() {
               token: model.token, // Store the token with the model option
             }));
 
-          // Combine with existing options
+          // Get model extensions from localStorage
+          const modelExtensions = localStorage.getItem('model_extensions');
+          let extensionModels: ModelOption[] = [];
+          
+          if (modelExtensions) {
+            try {
+              const extensions = JSON.parse(modelExtensions);
+              extensionModels = extensions
+                .filter((ext: any) => ext.model_id && ext.suffix) // Only include if both model_id and suffix exist
+                .map((ext: any) => ({
+                  label: ext.suffix,
+                  value: ext.model_id,
+                  token: ext.key || undefined // Only include token if it exists
+                }));
+            } catch (error) {
+              console.error('Error parsing model extensions:', error);
+            }
+          }
+
+          // Combine with existing options and extensions
           setModelOptions([
             ...MODEL_OPTIONS.filter((opt) => opt.value !== "divider"),
             ...newModels,
+            ...extensionModels
           ]);
 
           // Update local state with model tokens without saving to database
           const currentChatId = getCurrentChatId();
           const currentSettings = await getSettings(currentChatId);
-          const modelTokens = newModels.reduce((acc, model) => {
-            if (model.token) {
-              acc[model.value] = model.token;
-            }
-            return acc;
-          }, {} as Record<string, string>);
+          const modelTokens = {
+            ...newModels.reduce((acc, model) => {
+              if (model.token) {
+                acc[model.value] = model.token;
+              }
+              return acc;
+            }, {} as Record<string, string>),
+            ...extensionModels.reduce((acc, model) => {
+              if (model.token) {
+                acc[model.value] = model.token;
+              }
+              return acc;
+            }, {} as Record<string, string>)
+          };
           
           setSettings({
             ...currentSettings,
