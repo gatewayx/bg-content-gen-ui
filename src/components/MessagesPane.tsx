@@ -25,6 +25,9 @@ import { getSettings } from "../services/SettingsService";
 import { getModelDisplayName } from "../constants";
 // Import VITE_CANVAS_MODE_PROMPT from environment variables
 // const VITE_CANVAS_MODE_PROMPT = import.meta.env.VITE_CANVAS_MODE_PROMPT || '';
+import Modal from '@mui/joy/Modal';
+import ModalDialog from '@mui/joy/ModalDialog';
+import CircularProgress from '@mui/joy/CircularProgress';
 
 type MessagesPaneProps = {
   chat: ChatProps;
@@ -89,6 +92,26 @@ export default function MessagesPane(props: MessagesPaneProps) {
 
   const [researchModel, setResearchModel] = useState<string>('');
   const [writerModel, setWriterModel] = useState<string>('');
+
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const [isLoadingSettings, setIsLoadingSettings] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState('');
+
+  const loadingMessages = [
+    'Fetching data from server for you',
+    'Loading your content',
+    'Getting things ready for you',
+    'Preparing your workspace',
+    'Loading your messages',
+    'Almost there, just a moment',
+    'Working on your request',
+    'Loading your chat history'
+  ];
+
+  const getRandomLoadingMessage = () => {
+    const randomIndex = Math.floor(Math.random() * loadingMessages.length);
+    return loadingMessages[randomIndex];
+  };
 
   const convertToMessageProps = (messages: Array<{ id: number; role: string; content: string; created_at: string }>, isFT: boolean = false): MessageProps[] => {
     if (!messages || messages.length === 0) {
@@ -193,6 +216,10 @@ export default function MessagesPane(props: MessagesPaneProps) {
 
   useEffect(() => {
     const loadSessionMessages = async () => {
+      if (!chat?.id) return;
+      
+      setIsLoadingMessages(true);
+      setLoadingMessage(getRandomLoadingMessage());
       try {
         // Get research messages (interface: 0)
         const { data: researchMessages, error: researchError } = await supabase
@@ -302,6 +329,8 @@ export default function MessagesPane(props: MessagesPaneProps) {
           setTextAreaValue("");
           setEmptyTextAreaValue("");
         }
+      } finally {
+        setIsLoadingMessages(false);
       }
     };
 
@@ -373,12 +402,12 @@ export default function MessagesPane(props: MessagesPaneProps) {
 
   const handleCompletion = async () => {
     if (!textAreaValue.trim()) return;
-      setIsLoading(true);
+    setIsLoading(true);
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
 
     try {
-      // Save user message to Supabase with canvasMode: false
+      // Save user message to Supabase
       const { error: userMessageError } = await supabase
         .from('messages')
         .insert([{
@@ -386,7 +415,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
           content: textAreaValue,
           session_id: chat.id,
           interface: 0,
-          canvas_mode: false,  // default false for research interface
+          canvas_mode: false,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         }]);
@@ -461,7 +490,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
       }
       setTextAreaValue("");
 
-      // Save assistant message to Supabase with canvasMode: false
+      // Save assistant message to Supabase
       const { error: assistantMessageError } = await supabase
         .from('messages')
         .insert([{
@@ -469,7 +498,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
           content: fullMessage,
           session_id: chat.id,
           interface: 0,
-          canvas_mode: false,  // default false for research interface
+          canvas_mode: false,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         }]);
@@ -487,15 +516,12 @@ export default function MessagesPane(props: MessagesPaneProps) {
 
   const handleCompletionFT = async () => {
     if (!emptyTextAreaValue.trim()) return;
-      setIsLoading(true);
+    setIsLoading(true);
     const abortController = new AbortController();
     abortControllerRefFT.current = abortController;
-    const canvasMode = JSON.parse(localStorage.getItem('canvasMode') || 'false');
-    // const isCanvasMode = JSON.parse() || false;
-    // const sessionSettings = storedSettings[chat.id] || {};
-    // const  = sessionSettings.canvasMode || false;
+
     try {
-      // Save user message to Supabase with current canvasMode value
+      // Save user message to Supabase
       const { error: userMessageError } = await supabase
         .from('messages')
         .insert([{
@@ -503,7 +529,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
           content: emptyTextAreaValue,
           session_id: chat.id,
           interface: 1,
-          canvas_mode: canvasMode,  // use current canvasMode state
+          canvas_mode: canvasMode,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         }]);
@@ -595,7 +621,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
       }
       setEmptyTextAreaValue("");
       setEditorContent(fullMessage);
-      // Save assistant message to Supabase with current canvasMode value
+      // Save assistant message to Supabase
       const { error: assistantMessageError } = await supabase
         .from('messages')
         .insert([{
@@ -603,7 +629,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
           content: fullMessage,
           session_id: chat.id,
           interface: 1,
-          canvas_mode: canvasMode,  // use current canvasMode state
+          canvas_mode: canvasMode,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         }]);
@@ -640,6 +666,26 @@ export default function MessagesPane(props: MessagesPaneProps) {
     localStorage.setItem('canvasMode',JSON.stringify(editorVisible));
   }, [editorVisible]);
 
+  // Load settings when component mounts
+  useEffect(() => {
+    const loadSettings = async () => {
+      setIsLoadingSettings(true);
+      setLoadingMessage(getRandomLoadingMessage());
+      try {
+        const sessionSettings = getSettings(chat.id);
+        // ... existing settings loading logic ...
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      } finally {
+        setIsLoadingSettings(false);
+      }
+    };
+
+    loadSettings();
+  }, [chat.id]);
+
+  const isLoading = isLoadingMessages || isLoadingSettings;
+
   return (
     <Box sx={{ 
       display: "flex", 
@@ -647,6 +693,54 @@ export default function MessagesPane(props: MessagesPaneProps) {
       height: '95vh',
       overflow: 'hidden'
     }}>
+      <Modal
+        open={isLoading}
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backdropFilter: 'blur(8px)',
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        }}
+      >
+        <ModalDialog
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            p: 3,
+            gap: 2,
+            minWidth: 300,
+            maxWidth: 400,
+            borderRadius: '12px',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+            backgroundColor: 'background.surface',
+            border: 'none',
+          }}
+        >
+          <CircularProgress 
+            size="lg" 
+            sx={{ 
+              color: 'primary.500',
+              '& .MuiCircularProgress-circle': {
+                strokeLinecap: 'round',
+              }
+            }} 
+          />
+          <Typography 
+            level="body-md" 
+            sx={{ 
+              textAlign: 'center',
+              color: 'text.primary',
+              fontWeight: 'md',
+              fontSize: '1.1rem',
+            }}
+          >
+            {loadingMessage}
+          </Typography>
+        </ModalDialog>
+      </Modal>
       <Sheet
         sx={{
           height: "100%",
