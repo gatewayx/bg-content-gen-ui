@@ -104,7 +104,7 @@ export default function Login() {
                 backgroundColor: 'var(--joy-palette-background-surface)'
               }}>
                 <img 
-                  src="./semi-logo-gateway.png" 
+                  src="/images/semi-logo-gateway.png" 
                   alt="GatewayX Logo" 
                   style={{ 
                     width: '100%', 
