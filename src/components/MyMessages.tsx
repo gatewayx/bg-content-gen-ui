@@ -24,19 +24,16 @@ export default function MyMessages() {
   const { user } = useAuth();
   const [sessions, setSessions] = React.useState<ChatProps[]>([]);
   const [selectedChat, setSelectedChat] = React.useState<ChatProps | null>(null);
-  const [isLoading, setIsLoading] = React.useState(false);
+  const [isLoading, setIsLoading] = React.useState(true);
   const [isInitialLoad, setIsInitialLoad] = React.useState(true);
+  const hasCreatedInitialSession = React.useRef(false);
 
-  // Load sessions from database on mount
   React.useEffect(() => {
     const loadSessions = async () => {
       try {
         setIsLoading(true);
         const dbSessions = await getSessions();
         const chatSessions = dbSessions.map(sessionToChatProps);
-        
-        // Save sessions to localStorage
-        localStorage.setItem('chat_sessions', JSON.stringify(chatSessions));
         
         // Load settings for all sessions
         await loadAllSessionSettings(chatSessions.map(session => session.id));
@@ -46,8 +43,11 @@ export default function MyMessages() {
           setSelectedChat(chatSessions[0]);
           // Save selected chat ID to localStorage
           localStorage.setItem('selectedChatId', chatSessions[0].id);
-        } else if (isInitialLoad) {
-          // Only create a new session on initial load if no sessions exist
+          // Save all chat sessions to localStorage
+          localStorage.setItem('chat_sessions', JSON.stringify(chatSessions));
+        } else if (isInitialLoad && !hasCreatedInitialSession.current) {
+          // Only create a new session on initial load if no sessions exist and we haven't created one yet
+          hasCreatedInitialSession.current = true;
           const newSession = await createSession('New Session');
           const newChat = sessionToChatProps(newSession);
           const newSessions = [newChat];
@@ -72,51 +72,76 @@ export default function MyMessages() {
 
   const handleNewSession = async () => {
     try {
-      setIsLoading(true);
-      const newSession = await createSession(`Session ${sessions.length + 1}`);
-      const newChat = sessionToChatProps(newSession);
-      const updatedSessions = [...sessions, newChat];
-      
-      setSessions(updatedSessions);
-      setSelectedChat(newChat);
-      
-      // Update localStorage
+      // Create new session
+      const savedSessions = localStorage.getItem('chat_sessions');
+      const currentSessions = savedSessions ? JSON.parse(savedSessions) : [];
+      const newSession = await createSession(`Session ${currentSessions.length + 1}`);
+
+      // Convert new session to chat props
+      const newChatSession = sessionToChatProps(newSession);
+
+      // Add new session while preserving existing ones
+      const updatedSessions = [
+        newChatSession,
+        ...currentSessions
+      ];
+
+      // Update localStorage with all sessions
       localStorage.setItem('chat_sessions', JSON.stringify(updatedSessions));
-      localStorage.setItem('selectedChatId', newChat.id);
+
+      // Update state
+      setSessions(updatedSessions);
+      setSelectedChat(newChatSession);
+
     } catch (error) {
-      console.error('Error creating new session:', error);
-    } finally {
-      setIsLoading(false);
+      console.error('Error in handleNewSession:', error);
     }
   };
 
   const handleDeleteSession = async (sessionId: string) => {
-    if (sessions.length === 1) {
-      alert("You cannot delete the last or only remaining session.");
-      return;
-    }
-
     try {
-      setIsLoading(true);
-      await deleteSession(sessionId);
+      // Get current sessions from localStorage
+      const savedSessions = localStorage.getItem('chat_sessions');
+      const currentSessions = savedSessions ? JSON.parse(savedSessions) : [];
       
-      // Update local state after successful deletion
-      const updatedSessions = sessions.filter(session => session.id !== sessionId);
-      setSessions(updatedSessions);
-      
-      // Select the first available session
-      if (selectedChat?.id === sessionId) {
-        setSelectedChat(updatedSessions[0]);
-        localStorage.setItem('selectedChatId', updatedSessions[0].id);
+      // Keep a copy of the sessions before deletion
+      const sessionsBeforeDeletion = [...currentSessions];
+
+      // Delete from database
+      try {
+        await deleteSession(sessionId);
+      } catch (error) {
+        console.error('Error deleting session:', error);
+        return;
       }
-      
-      // Update localStorage
+
+      // Filter out deleted session but keep its data in localStorage
+      const updatedSessions = currentSessions.filter((session: ChatProps) => session.id !== sessionId);
       localStorage.setItem('chat_sessions', JSON.stringify(updatedSessions));
+
+      // Update state but preserve the messages data
+      setSessions(updatedSessions);
+
+      // If the deleted session was selected, select another one
+      if (selectedChat && selectedChat.id === sessionId) {
+        const nextSession = updatedSessions[0];
+        if (nextSession) {
+          setSelectedChat(nextSession);
+        } else {
+          setSelectedChat(null);
+        }
+      }
+
+      // Store the deleted session's data separately for persistence
+      const deletedSession = sessionsBeforeDeletion.find((session: ChatProps) => session.id === sessionId);
+      if (deletedSession) {
+        const deletedSessions = JSON.parse(localStorage.getItem('deleted_sessions') || '[]');
+        deletedSessions.push(deletedSession);
+        localStorage.setItem('deleted_sessions', JSON.stringify(deletedSessions));
+      }
+
     } catch (error) {
-      console.error('Error deleting session:', error);
-      alert('Failed to delete session. Please try again.');
-    } finally {
-      setIsLoading(false);
+      console.error('Error in handleDeleteSession:', error);
     }
   };
 

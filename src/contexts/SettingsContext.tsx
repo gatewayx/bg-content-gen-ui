@@ -22,17 +22,37 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const updateSettings = async (newSettings: Partial<Settings>, saveToDb: boolean = false) => {
     const updatedSettings = { ...settings, ...newSettings };
     setSettings(updatedSettings);
-    localStorage.setItem('settings', JSON.stringify(updatedSettings));
     
-    if (saveToDb) {
-      const currentChatId = localStorage.getItem('selectedChatId');
-      if (currentChatId) {
-        await saveSettings(updatedSettings, currentChatId);
-      }
+    // Update settings in localStorage
+    const currentStoredSettings = JSON.parse(localStorage.getItem('settings') || '{}');
+    const currentChatId = localStorage.getItem('selectedChatId');
+    if (currentChatId) {
+      currentStoredSettings[currentChatId] = updatedSettings;
+      localStorage.setItem('settings', JSON.stringify(currentStoredSettings));
+    }
+    
+    if (saveToDb && currentChatId) {
+      await saveSettings(updatedSettings, currentChatId);
+    }
+
+    // Update chat sessions in localStorage to reflect new model selections
+    const chatSessions = JSON.parse(localStorage.getItem('chat_sessions') || '[]');
+    if (currentChatId && chatSessions.length > 0) {
+      const updatedSessions = chatSessions.map((session: any) => {
+        if (session.id === currentChatId) {
+          return {
+            ...session,
+            researchModel: updatedSettings.researchModel,
+            writerModel: updatedSettings.writerModel
+          };
+        }
+        return session;
+      });
+      localStorage.setItem('chat_sessions', JSON.stringify(updatedSessions));
     }
   };
 
-  // Only fetch settings on initial load
+  // Load settings on initial load and when selected chat changes
   useEffect(() => {
     const loadSettings = async () => {
       const currentChatId = localStorage.getItem('selectedChatId');
@@ -42,6 +62,16 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
     };
     loadSettings();
+
+    // Listen for changes to selectedChatId in localStorage
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'selectedChatId') {
+        loadSettings();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
   return (

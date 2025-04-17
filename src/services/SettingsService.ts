@@ -327,34 +327,93 @@ export const loadAllSessionSettings = async (sessionIds: string[]): Promise<void
 
     // Initialize localStorage structure if it doesn't exist
     const currentStoredSettings = JSON.parse(localStorage.getItem('settings') || '{}');
+    const chatSessions = JSON.parse(localStorage.getItem('chat_sessions') || '[]');
 
-    // Load settings for each session
+    // Load settings and messages for each session
     for (const sessionId of sessionIds) {
       try {
-        const { data, error } = await supabase
+        // Fetch settings
+        const { data: settingsData, error: settingsError } = await supabase
           .from('settings')
           .select('*')
           .eq('session_id', sessionId)
           .eq('user_id', user.id);
 
-        if (error) {
-          console.error(`Error fetching settings for session ${sessionId}:`, error);
-          // Use default settings if there's an error
+        if (settingsError) {
+          console.error(`Error fetching settings for session ${sessionId}:`, settingsError);
           currentStoredSettings[sessionId] = DEFAULT_SETTINGS;
           continue;
         }
 
-        // If no settings found, use default settings
-        if (!data || data.length === 0) {
-          currentStoredSettings[sessionId] = DEFAULT_SETTINGS;
-          continue;
+        // Fetch research messages (interface: 0)
+        const { data: messages, error: messagesError } = await supabase
+          .from('messages')
+          .select('*')
+          .eq('session_id', sessionId)
+          .eq('interface', 0)
+          .order('created_at', { ascending: true });
+
+        // Fetch writer messages (interface: 1)
+        const { data: messagesFT, error: messagesFTError } = await supabase
+          .from('messages')
+          .select('*')
+          .eq('session_id', sessionId)
+          .eq('interface', 1)
+          .order('created_at', { ascending: true });
+
+        if (messagesError || messagesFTError) {
+          console.error(`Error fetching messages for session ${sessionId}:`, messagesError || messagesFTError);
+        }
+
+        // Format messages
+        const formattedMessages = (messages || []).map(msg => ({
+          id: msg.id.toString(),
+          sender: msg.role === 'user' ? 'You' : {
+            name: "Assistant",
+            username: new Date(msg.created_at).toLocaleString(),
+            avatar: "/static/images/avatar/1.jpg",
+            online: true
+          },
+          content: msg.content,
+          timestamp: new Date(msg.created_at).toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+          })
+        }));
+
+        const formattedMessagesFT = (messagesFT || []).map(msg => ({
+          id: msg.id.toString(),
+          sender: msg.role === 'user' ? 'You' : {
+            name: "Assistant",
+            username: new Date(msg.created_at).toLocaleString(),
+            avatar: "/static/images/avatar/1.jpg",
+            online: true
+          },
+          content: msg.content,
+          timestamp: new Date(msg.created_at).toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+          }),
+          canvasMode: msg.canvasMode || false
+        }));
+
+        // Update chat sessions with messages
+        const sessionIndex = chatSessions.findIndex((s: any) => s.id === sessionId);
+        if (sessionIndex !== -1) {
+          chatSessions[sessionIndex] = {
+            ...chatSessions[sessionIndex],
+            messages: formattedMessages,
+            messagesFT: formattedMessagesFT
+          };
         }
 
         // Start with default settings
         const settings = { ...DEFAULT_SETTINGS };
 
         // Update with database values
-        data.forEach(setting => {
+        settingsData?.forEach(setting => {
           if (!setting || !setting.key || !setting.value) return;
 
           switch (setting.key) {
@@ -379,17 +438,17 @@ export const loadAllSessionSettings = async (sessionIds: string[]): Promise<void
           }
         });
 
-        // Save to localStorage
+        // Save settings to localStorage
         currentStoredSettings[sessionId] = settings;
       } catch (error) {
         console.error(`Error processing settings for session ${sessionId}:`, error);
-        // Use default settings if there's an error
         currentStoredSettings[sessionId] = DEFAULT_SETTINGS;
       }
     }
 
-    // Save all settings to localStorage
+    // Save all settings and sessions to localStorage
     localStorage.setItem('settings', JSON.stringify(currentStoredSettings));
+    localStorage.setItem('chat_sessions', JSON.stringify(chatSessions));
   } catch (error) {
     console.error('Error loading all session settings:', error);
   }

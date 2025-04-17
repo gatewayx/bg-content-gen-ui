@@ -7,13 +7,12 @@ import ChatBubble from './ChatBubble';
 import MessageInput from './MessageInput';
 import MessagesPaneHeader from './MessagesPaneHeader';
 import { ChatProps, MessageProps } from '../components/types';
-import { getSettings } from "../services/SettingsService";
 import { getModelDisplayName } from "../constants";
+import { useSettings } from "../contexts/SettingsContext";
 
 type MessagesPaneProps = {
   chat: ChatProps;
 };
-
 
 function getFormattedTime() {
   const now = new Date();
@@ -32,9 +31,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
   const { chat } = props;
   const [chatMessages, setChatMessages] = React.useState(chat.messages);
   const [textAreaValue, setTextAreaValue] = React.useState('');
-  const [emptyTextAreaValue, setEmptyTextAreaValue] = React.useState('');
-  const [isLoading, setIsLoading] = React.useState(false);
-  const settings = getSettings();
+  const { settings } = useSettings();
 
   React.useEffect(() => {
     setChatMessages(chat.messages);

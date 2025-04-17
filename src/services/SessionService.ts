@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { ChatProps } from '../components/types';
+import { ChatProps, MessageProps } from '../components/types';
 
 export interface Session {
   id: string;
@@ -7,10 +7,10 @@ export interface Session {
   label: string;
   created_at: string;
   updated_at: string;
-  editorContent: string;
+  editor_draft: string;
   is_archived: boolean;
-  // chatMessages: any[];
-  // ftChatMessages: any[];
+  messages: MessageProps[];
+  messagesFT: MessageProps[];
 }
 
 export const createSession = async (label: string): Promise<Session> => {
@@ -27,16 +27,18 @@ export const createSession = async (label: string): Promise<Session> => {
         created_at: now,
         updated_at: now,
         editor_draft: '',
-        is_archived: false,
-        // chatMessages: [],
-        // ftChatMessages: []
+        is_archived: false
       }
     ])
     .select()
     .single();
 
   if (error) throw error;
-  return data;
+  return {
+    ...data,
+    messages: [],
+    messagesFT: []
+  };
 };
 
 export const getSessions = async (): Promise<Session[]> => {
@@ -47,11 +49,68 @@ export const getSessions = async (): Promise<Session[]> => {
     .order('created_at', { ascending: false });
 
   if (error) throw error;
-  return data.map(session => ({
-    ...session,
-    chatMessages: session.chatMessages || [],
-    ftChatMessages: session.ftChatMessages || []
-  }));
+
+  // Fetch messages for all sessions
+  const sessionIds = data.map(session => session.id);
+  const { data: messages, error: messagesError } = await supabase
+    .from('messages')
+    .select('*')
+    .in('session_id', sessionIds)
+    .order('created_at', { ascending: true });
+
+  if (messagesError) throw messagesError;
+
+  // Group messages by session and interface
+  const messagesBySession: Record<string, { messages: any[], messagesFT: any[] }> = {};
+  messages?.forEach(msg => {
+    if (!messagesBySession[msg.session_id]) {
+      messagesBySession[msg.session_id] = { messages: [], messagesFT: [] };
+    }
+    if (msg.interface === 0) {
+      messagesBySession[msg.session_id].messages.push(msg);
+    } else {
+      messagesBySession[msg.session_id].messagesFT.push(msg);
+    }
+  });
+
+  // Format messages and combine with sessions
+  return data.map(session => {
+    const sessionMessages = messagesBySession[session.id] || { messages: [], messagesFT: [] };
+    return {
+      ...session,
+      messages: sessionMessages.messages.map(msg => ({
+        id: msg.id.toString(),
+        sender: msg.role === 'user' ? 'You' : {
+          name: "Assistant",
+          username: new Date(msg.created_at).toLocaleString(),
+          avatar: "/static/images/avatar/1.jpg",
+          online: true
+        },
+        content: msg.content,
+        timestamp: new Date(msg.created_at).toLocaleTimeString('en-US', {
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true
+        })
+      })),
+      messagesFT: sessionMessages.messagesFT.map(msg => ({
+        id: msg.id.toString(),
+        sender: msg.role === 'user' ? 'You' : {
+          name: "Assistant",
+          username: new Date(msg.created_at).toLocaleString(),
+          avatar: "/static/images/avatar/1.jpg",
+          online: true
+        },
+        content: msg.content,
+        timestamp: new Date(msg.created_at).toLocaleTimeString('en-US', {
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true
+        }),
+        canvasMode: msg.canvasMode || false
+      }))
+    };
+  });
 };
 
 export const updateSession = async (sessionId: string, updates: Partial<Session>): Promise<Session> => {
@@ -86,24 +145,23 @@ export const deleteSession = async (sessionId: string): Promise<void> => {
 export const sessionToChatProps = (session: Session): ChatProps => {
   return {
     id: session.id,
-    title: session.label,
-    // messages: session.chatMessages || [],
-    // messagesFT: session.ftChatMessages || [],
-    editorContent: session.editor_draft || '',
     sender: {
       name: session.label,
       username: new Date(session.created_at).toLocaleString(),
       avatar: "/static/images/avatar/5.jpg",
       online: false,
-    }
+    },
+    messages: session.messages || [],
+    messagesFT: session.messagesFT || [],
+    editorContent: session.editor_draft || '',
   };
 };
 
 export const chatPropsToSessionData = (chat: ChatProps): Partial<Session> => {
   return {
-    label: chat.title,
-    editor_draft: chat.editorContent,
-    chatMessages: chat.messages,
-    ftChatMessages: chat.messagesFT
+    label: chat.sender.name,
+    editor_draft: chat.editorContent || '',
+    messages: chat.messages,
+    messagesFT: chat.messagesFT
   };
 };

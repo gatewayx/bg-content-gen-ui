@@ -52,7 +52,7 @@ export default function Header() {
   // Function to get current chat ID
   const getCurrentChatId = () => {
     const savedSession = localStorage.getItem('chat_sessions');
-    let currentChatId = 'default';
+    let currentChatId = localStorage.getItem('selectedChatId') || 'default';
     
     if (savedSession) {
       try {
@@ -74,6 +74,7 @@ export default function Header() {
       try {
         const currentChatId = getCurrentChatId();
         const loadedSettings = await getSettings(currentChatId);
+        console.log('loadedSettings', loadedSettings);
         setSettings(loadedSettings);
         // Set initial state values
         setResearchModel(loadedSettings.researchModel);
@@ -90,6 +91,22 @@ export default function Header() {
       }
     };
     loadSettings();
+  }, []);
+
+  // Update settings when session changes
+  React.useEffect(() => {
+    const handleStorageChange = async () => {
+      const currentChatId = getCurrentChatId();
+      const loadedSettings = await getSettings(currentChatId);
+      setSettings(loadedSettings);
+      setResearchModel(loadedSettings.researchModel);
+      setWriterModel(loadedSettings.writerModel);
+      setResearchPrompts(loadedSettings.researchPrompts);
+      setWriterPrompts(loadedSettings.writerPrompts);
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
   const [researchModel, setResearchModel] = React.useState<ModelValue>(

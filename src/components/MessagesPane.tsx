@@ -1,21 +1,11 @@
 import React, { useRef, useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
 import Box from "@mui/joy/Box";
 import Sheet from "@mui/joy/Sheet";
 import Stack from "@mui/joy/Stack";
-import List from "@mui/joy/List";
-import ListItem from "@mui/joy/ListItem";
-import ListItemButton from "@mui/joy/ListItemButton";
-import ListItemDecorator from "@mui/joy/ListItemDecorator";
-import ListItemContent from "@mui/joy/ListItemContent";
 import Typography from "@mui/joy/Typography";
-import Avatar from "@mui/joy/Avatar";
-import AvatarGroup from "@mui/joy/AvatarGroup";
 import IconButton from "@mui/joy/IconButton";
-import FormControl from "@mui/joy/FormControl";
-import FormHelperText from "@mui/joy/FormHelperText";
-import Textarea from "@mui/joy/Textarea";
-import SendIcon from "@mui/icons-material/Send";
+// import Textarea from "@mui/joy/Textarea";
+// import SendIcon from "@mui/icons-material/Send";
 import StopIcon from "@mui/icons-material/Stop";
 import OpenInFullIcon from '@mui/icons-material/OpenInFull';
 import CloseFullscreenIcon from '@mui/icons-material/CloseFullscreen';
@@ -34,7 +24,7 @@ import { createChatCompletion } from "../services/OpenAIService";
 import { getSettings } from "../services/SettingsService";
 import { getModelDisplayName } from "../constants";
 // Import VITE_CANVAS_MODE_PROMPT from environment variables
-const VITE_CANVAS_MODE_PROMPT = import.meta.env.VITE_CANVAS_MODE_PROMPT || '';
+// const VITE_CANVAS_MODE_PROMPT = import.meta.env.VITE_CANVAS_MODE_PROMPT || '';
 
 type MessagesPaneProps = {
   chat: ChatProps;
@@ -74,37 +64,39 @@ export default function MessagesPane(props: MessagesPaneProps) {
     setIsLoading,
   } = props;
 
-  // Initialize with empty arrays for new sessions
-  const [chatMessages, setChatMessages] = React.useState<MessageProps[]>([]);
-  const [ftChatMessages, setftChatMessages] = React.useState<MessageProps[]>([]);
-  const [textAreaValue, setTextAreaValue] = React.useState("");
-  const [emptyTextAreaValue, setEmptyTextAreaValue] = React.useState("");
-  const [researchPrompts, setResearchPrompts] = React.useState<Record<string, string>>({});
-  const [writerPrompts, setWriterPrompts] = React.useState<Record<string, string>>({});
-  const abortControllerRef = useRef<AbortController>(null);
-  const abortControllerRefFT = useRef<AbortController>(null);
+  const [chatMessages, setChatMessages] = useState<MessageProps[]>([]);
+  const [ftChatMessages, setftChatMessages] = useState<MessageProps[]>([]);
+  const [textAreaValue, setTextAreaValue] = useState("");
+  const [emptyTextAreaValue, setEmptyTextAreaValue] = useState("");
+  const [researchPrompts, setResearchPrompts] = useState<Record<string, string>>({});
+  const [writerPrompts, setWriterPrompts] = useState<Record<string, string>>({});
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const abortControllerRefFT = useRef<AbortController | null>(null);
   
-  // Add state to track collapsed status of each panel
-  const [researchCollapsed, setResearchCollapsed] = React.useState(true);
-  const [writerCollapsed, setWriterCollapsed] = React.useState(true);
-  const [editorContent, setEditorContent] = React.useState("");
-  // Track if editor is visible
-  const [editorVisible, setEditorVisible] = React.useState(false);
-
-  // Get settings from context
+  const [researchCollapsed, setResearchCollapsed] = useState(true);
+  const [writerCollapsed, setWriterCollapsed] = useState(true);
+  const [editorContent, setEditorContent] = useState("");
+  const [editorVisible, setEditorVisible] = useState(false);
+  const [canvasMode, setCanvasMode] = useState(false);
+  
   const { settings } = useSettings();
+  const [sessionSettings,setSessionSettings] = useState(getSettings(chat.id));
 
-  // Get session ID from chat object
   const sessionId = chat.id || 'default';
 
-  // Convert database messages to MessageProps format
-  const convertToMessageProps = (messages: any[], isFT: boolean = false): MessageProps[] => {
+  console.log('sessionId', sessionId);
+  
+
+  const [researchModel, setResearchModel] = useState<string>('');
+  const [writerModel, setWriterModel] = useState<string>('');
+
+  const convertToMessageProps = (messages: Array<{ id: number; role: string; content: string; created_at: string }>, isFT: boolean = false): MessageProps[] => {
     if (!messages || messages.length === 0) {
       return [];
     }
     return messages.map(msg => ({
       id: msg.id.toString(),
-      sender: msg.role === 'user' ? 'You' : {
+      sender: msg.role === 'user' ? "You" as const : {
         name: "Session 1",
         username: new Date(msg.created_at).toLocaleString(),
         avatar: "/static/images/avatar/3.jpg",
@@ -120,10 +112,8 @@ export default function MessagesPane(props: MessagesPaneProps) {
     }));
   };
 
-  // Function to fetch messages for a session
   const fetchSessionMessages = async (sessionId: string) => {
     try {
-      // Fetch research messages (interface: 0)
       const { data: researchMessages, error: researchError } = await supabase
         .from('messages')
         .select('*')
@@ -131,7 +121,6 @@ export default function MessagesPane(props: MessagesPaneProps) {
         .eq('interface', 0)
         .order('created_at', { ascending: true });
 
-      // Fetch writer messages (interface: 1)
       const { data: writerMessages, error: writerError } = await supabase
         .from('messages')
         .select('*')
@@ -154,13 +143,10 @@ export default function MessagesPane(props: MessagesPaneProps) {
     }
   };
 
-  // Function to fetch messages for all sessions
   const fetchAllSessionMessages = async (sessions: ChatProps[]) => {
     try {
-      // Get all session IDs
       const sessionIds = sessions.map(session => session.id);
       
-      // Fetch all messages for these sessions
       const { data: allMessages, error } = await supabase
         .from('messages')
         .select('*')
@@ -172,8 +158,10 @@ export default function MessagesPane(props: MessagesPaneProps) {
         return {};
       }
 
-      // Group messages by session_id and interface
-      const messagesBySession: Record<string, { messages: any[], messagesFT: any[] }> = {};
+      const messagesBySession: Record<string, { 
+        messages: Array<{ id: number; role: string; content: string; created_at: string }>, 
+        messagesFT: Array<{ id: number; role: string; content: string; created_at: string }> 
+      }> = {};
       
       allMessages?.forEach(msg => {
         if (!messagesBySession[msg.session_id]) {
@@ -187,7 +175,6 @@ export default function MessagesPane(props: MessagesPaneProps) {
         }
       });
 
-      // Convert messages to MessageProps format for each session
       const convertedMessages: Record<string, { messages: MessageProps[], messagesFT: MessageProps[] }> = {};
       
       Object.entries(messagesBySession).forEach(([sessionId, msgs]) => {
@@ -204,109 +191,126 @@ export default function MessagesPane(props: MessagesPaneProps) {
     }
   };
 
-  // Load session state from local storage on component mount or when session changes
-  React.useEffect(() => {
-    const loadSessions = async () => {
-      const savedSession = localStorage.getItem(`chat_sessions`);
-      
-      if (savedSession) {
-        try {
-          const sessionState = JSON.parse(savedSession);
-          const selected = sessionState.filter((obj:ChatProps) => obj.id == chat.id)[0];
-          console.log('selected session', chat.id);
-          
-          // Update selectedChatId in localStorage
-          localStorage.setItem('selectedChatId', chat.id);
-          
-          // Only fetch messages if they don't exist in the session
-          if (!selected.messages || !selected.messagesFT) {
-            // Fetch messages for all sessions
-            const allMessages = await fetchAllSessionMessages(sessionState);
-            
-            // Update each session with its messages
-            const updatedSessions = sessionState.map((session: ChatProps) => {
-              const sessionMessages = allMessages[session.id] || { messages: [], messagesFT: [] };
+  useEffect(() => {
+    const loadSessionMessages = async () => {
+      try {
+        // Get research messages (interface: 0)
+        const { data: researchMessages, error: researchError } = await supabase
+          .from('messages')
+          .select('*')
+          .eq('session_id', chat.id)
+          .eq('interface', 0)
+          .order('created_at', { ascending: true });
+
+        if (researchError) {
+          console.error('Error fetching research messages:', researchError);
+        }
+
+        // Get writer messages (interface: 1)
+        const { data: writerMessages, error: writerError } = await supabase
+          .from('messages')
+          .select('*')
+          .eq('session_id', chat.id)
+          .eq('interface', 1)
+          .order('created_at', { ascending: true });
+
+        if (writerError) {
+          console.error('Error fetching writer messages:', writerError);
+        }
+
+        // Format messages as before
+        const formattedResearchMessages = (researchMessages || []).map(msg => ({
+          id: msg.id.toString(),
+          sender: msg.role === 'user' ? "You" as const : {
+            name: "Assistant",
+            username: new Date(msg.created_at).toLocaleString(),
+            avatar: "/static/images/avatar/1.jpg",
+            online: true
+          } as UserProps,
+          content: msg.content,
+          timestamp: new Date(msg.created_at).toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+          })
+        }));
+
+        const formattedWriterMessages = (writerMessages || []).map(msg => ({
+          id: msg.id.toString(),
+          sender: msg.role === 'user' ? "You" as const : {
+            name: "Assistant",
+            username: new Date(msg.created_at).toLocaleString(),
+            avatar: "/static/images/avatar/1.jpg",
+            online: true
+          } as UserProps,
+          content: msg.content,
+          timestamp: new Date(msg.created_at).toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+          }),
+          canvasMode: msg.canvasMode || false
+        }));
+
+        // Get existing sessions from localStorage
+        const savedSession = localStorage.getItem('chat_sessions');
+        if (savedSession) {
+          const sessions = JSON.parse(savedSession);
+          // Only update the current session's messages
+          const updatedSessions = sessions.map((session: any) => {
+            if (session.id === chat.id) {
               return {
                 ...session,
-                messages: sessionMessages.messages,
-                messagesFT: sessionMessages.messagesFT,
-                textAreaValue: session.textAreaValue || "",
-                emptyTextAreaValue: session.emptyTextAreaValue || "",
-                editorContent: session.editorContent || ""
+                messages: formattedResearchMessages,
+                messagesFT: formattedWriterMessages,
+                textAreaValue: "",
+                emptyTextAreaValue: "",
+                editorContent: ""
               };
-            });
-            
-            // Save updated sessions back to localStorage
-            localStorage.setItem(`chat_sessions`, JSON.stringify(updatedSessions));
-            
-            // Update local state with selected session's messages
-            const selectedMessages = allMessages[chat.id] || { messages: [], messagesFT: [] };
-            setChatMessages(selectedMessages.messages);
-            setftChatMessages(selectedMessages.messagesFT);
-          } else {
-            // Use existing messages from the session
-            setChatMessages(selected.messages);
-            setftChatMessages(selected.messagesFT);
-          }
-          
-          // find the last message from the selected session, sender is not you
-          const lastMessage = selected.messagesFT[selected.messagesFT.length - 1];
-          if (lastMessage && lastMessage.sender !== "You") {
-            setEditorContent(lastMessage.content);
-          } else {
-            setEditorContent("");
-          }
-          
-          setTextAreaValue(selected.textAreaValue || ""); // Load research textarea value
-          setEmptyTextAreaValue(selected.emptyTextAreaValue || ""); // Load write textarea value
-
-          // Load saved prompts for current models
-          const settings = JSON.parse(localStorage.getItem('settings') || '{}');
-          const sessionSettings = settings[chat.id] || {};
-          
-          if (sessionSettings.researchPrompts && sessionSettings.researchModel) {
-            const researchPrompt = sessionSettings.researchPrompts[sessionSettings.researchModel];
-            if (researchPrompt) {
-              setResearchPrompts(prev => ({
-                ...prev,
-                [sessionSettings.researchModel]: researchPrompt
-              }));
             }
-          }
-
-          if (sessionSettings.writerPrompts && sessionSettings.writerModel) {
-            const writerPrompt = sessionSettings.writerPrompts[sessionSettings.writerModel];
-            if (writerPrompt) {
-              setWriterPrompts(prev => ({
-                ...prev,
-                [sessionSettings.writerModel]: writerPrompt
-              }));
-            }
-          }
-        } catch (error) {
-          console.error('Error loading session state:', error);
-          // Reset to empty arrays if there's an error
-          setChatMessages([]);
-          setftChatMessages([]);
-          setEditorContent(""); // Reset editor content
-          setTextAreaValue(""); // Reset research textarea
-          setEmptyTextAreaValue(""); // Reset write textarea
+            // Keep other sessions unchanged
+            return session;
+          });
+          localStorage.setItem('chat_sessions', JSON.stringify(updatedSessions));
         }
-      } else {
-        // Reset to empty arrays for new sessions
+
+        // Update state only for current session's messages
+        if (chat.id) {
+          setChatMessages(formattedResearchMessages);
+          setftChatMessages(formattedWriterMessages);
+        }
+
+        // Update editor content if there are writer messages and last message is from assistant
+        const lastWriterMessage = formattedWriterMessages[formattedWriterMessages.length - 1];
+        if (lastWriterMessage && lastWriterMessage.sender !== 'You') {
+          setEditorContent(lastWriterMessage.content);
+        } else {
+          setEditorContent("");
+        }
+        
+        // Reset text areas for current session
+        setTextAreaValue("");
+        setEmptyTextAreaValue("");
+
+      } catch (error) {
+        console.error('Error loading session messages:', error);
+        // Only clear current session's messages on error
+        if (chat.id) {
         setChatMessages([]);
         setftChatMessages([]);
-        setEditorContent(""); // Reset editor content
-        setTextAreaValue(""); // Reset research textarea
-        setEmptyTextAreaValue(""); // Reset write textarea
+          setEditorContent("");
+          setTextAreaValue("");
+          setEmptyTextAreaValue("");
+        }
       }
     };
 
-    loadSessions();
+    if (chat.id) {
+      loadSessionMessages();
+    }
   }, [chat.id]);
 
-  // Save editor content and textarea values to session state when they change
-  React.useEffect(() => {
+  useEffect(() => {
     const savedSession = localStorage.getItem(`chat_sessions`);
     if (savedSession) {
       try {
@@ -368,76 +372,46 @@ export default function MessagesPane(props: MessagesPaneProps) {
   };
 
   const handleCompletion = async () => {
-    try {
+    if (!textAreaValue.trim()) return;
       setIsLoading(true);
-      const newAbortController = new AbortController();
-      abortControllerRef.current = newAbortController;
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
 
-      // Get settings for research model and prompt
-      const settings = await getSettings(chat.id);
-
-      const newId = chatMessages.length;
-      const initialMessages: MessageProps[] = [
-        ...chatMessages,
-        {
-          id: (newId + 1).toString(),
-          sender: "You" as const,
+    try {
+      // Save user message to Supabase with canvasMode: false
+      const { error: userMessageError } = await supabase
+        .from('messages')
+        .insert([{
+          role: 'user',
           content: textAreaValue,
-          timestamp: getFormattedTime(),
-        },
-        {
-          id: (newId + 2).toString(),
-          sender: {
-            name: "Session 1",
-            username: new Date().toLocaleString(),
-            avatar: "/static/images/avatar/3.jpg",
-            online: true,
-          },
-          content: "",
-          timestamp: getFormattedTime(),
-        },
-      ];
+          session_id: chat.id,
+          interface: 0,
+          canvas_mode: false,  // default false for research interface
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }]);
 
-      setChatMessages(initialMessages);
-
-      // Save user message to database
-      try {
-        const { error: userMessageError } = await supabase
-          .from('messages')
-          .insert([
-            {
-              role: 'user',
-              content: textAreaValue,
-              session_id: chat.id,
-              interface: 0, // Research interface
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            }
-          ]);
-
-        if (userMessageError) {
-          console.error('Error saving user message:', userMessageError);
-        }
-      } catch (error) {
-        console.error('Error saving user message:', error);
+      if (userMessageError) {
+        console.error('Error saving user message:', userMessageError);
       }
 
-      handleNewMessage({
-        id: (newId + 1).toString(),
+      // Add user message to state immediately
+      const newMessage: MessageProps = {
+        id: Date.now().toString(),
         sender: "You" as const,
         content: textAreaValue,
-        timestamp: getFormattedTime(),
-      });
+        timestamp: new Date().toLocaleTimeString('en-US', {
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true
+        })
+      };
+      setChatMessages(prev => [...prev, newMessage]);
 
+      const systemPrompt = researchPrompts[settings.researchModel] || settings.researchPrompts[settings.researchModel] || '';
       const messages: ChatMessage[] = [];
+      messages.push({ role: "system", content: systemPrompt });
       
-      // Get system message from settings for the current model
-      messages.push({ 
-        role: "system", 
-        content: settings.researchPrompts[settings.researchModel] || '' 
-      });
-      
-      // Add all previous messages to the context
       chatMessages.forEach(msg => {
         if (msg.sender === "You") {
           messages.push({ role: "user", content: msg.content });
@@ -445,167 +419,131 @@ export default function MessagesPane(props: MessagesPaneProps) {
           messages.push({ role: "assistant", content: msg.content });
         }
       });
-      
-      // Add current user message
       messages.push({ role: "user", content: textAreaValue });
 
-      // Get the token for the selected model
       const modelToken = settings.modelTokens[settings.researchModel] || import.meta.env.VITE_OPEN_AI_KEY;
       const response = await createChatCompletion(settings.researchModel, messages, modelToken);
 
-      let fullMessage = ""; // Store the full AI response
+      let fullMessage = "";
+      const assistantMessage = {
+        id: (chatMessages.length + 2).toString(),
+        sender: {
+          name: "Assistant",
+          username: new Date().toLocaleString(),
+          avatar: "/static/images/avatar/1.jpg",
+          online: true
+        },
+        content: "",
+        timestamp: new Date().toLocaleTimeString('en-US', {
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true
+        })
+      };
+
+      // Add initial empty assistant message
+      setChatMessages(prev => [...prev, assistantMessage]);
 
       for await (const chunk of response) {
-        if (chunk.choices[0]?.delta?.content) {
-          fullMessage += chunk.choices[0].delta.content;
-          setChatMessages((prevMessages) => {
-            const updatedMessages = [...prevMessages];
-            const lastMessage = updatedMessages[updatedMessages.length - 1];
-            if (lastMessage && typeof lastMessage.sender !== "string") {
-              lastMessage.content = fullMessage;
-            }
-            return updatedMessages;
-          });
+        if (abortControllerRef.current?.signal.aborted) {
+          break;
         }
+        fullMessage += chunk.choices[0].delta.content || '';
+        // Update the last message with new content
+        setChatMessages(prev => {
+          const newMessages = [...prev];
+          newMessages[newMessages.length - 1] = {
+            ...newMessages[newMessages.length - 1],
+            content: fullMessage
+          };
+          return newMessages;
+        });
       }
+      setTextAreaValue("");
 
-      // Save assistant message to database
-      try {
-        const { error: assistantMessageError } = await supabase
-          .from('messages')
-          .insert([
-            {
-              role: 'assistant',
-              content: fullMessage,
-              session_id: chat.id,
-              interface: 0, // Research interface
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            }
-          ]);
+      // Save assistant message to Supabase with canvasMode: false
+      const { error: assistantMessageError } = await supabase
+        .from('messages')
+        .insert([{
+          role: 'assistant',
+          content: fullMessage,
+          session_id: chat.id,
+          interface: 0,
+          canvas_mode: false,  // default false for research interface
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }]);
 
-        if (assistantMessageError) {
-          console.error('Error saving assistant message:', assistantMessageError);
-        }
-      } catch (error) {
-        console.error('Error saving assistant message:', error);
+      if (assistantMessageError) {
+        console.error('Error saving assistant message:', assistantMessageError);
       }
-
-      // Save the final state of messages after completion
-      setChatMessages((prevMessages) => {
-        const finalMessages = [...prevMessages];
-        const lastMessage = finalMessages[finalMessages.length - 1];
-        if (lastMessage && typeof lastMessage.sender !== "string") {
-          lastMessage.content = fullMessage;
-        }
-        handleNewMessage(lastMessage);
-        return finalMessages;
-      });
-
-      setEditorContent("");
-      setTextAreaValue(""); // Clear research textarea
-      handleAbortRequest();
+    } catch (error) {
+      console.error('Error in completion:', error);
+    } finally {
       setIsLoading(false);
-    } catch (error: unknown) {
-      if (error instanceof Error && error.message === "Request was aborted.") {
-        console.warn("Request was aborted by the user.");
-        return;
-      }
-
-      logError(error);
-      setIsLoading(false);
-      handleAbortRequest();
-      alert("Ooooops! Something went wrong !");
+      abortControllerRef.current = null;
     }
   };
 
   const handleCompletionFT = async () => {
-    try {
+    if (!emptyTextAreaValue.trim()) return;
       setIsLoading(true);
-      const newAbortController = new AbortController();
-      abortControllerRefFT.current = newAbortController;
-
-      // Get settings for writer model and prompt
-      const settings = await getSettings(chat.id);
-
-      const newId = ftChatMessages.length;
-      const initialMessages: MessageProps[] = [
-        ...ftChatMessages,
-        {
-          id: (newId + 1).toString(),
-          sender: "You" as const,
+    const abortController = new AbortController();
+    abortControllerRefFT.current = abortController;
+    const canvasMode = JSON.parse(localStorage.getItem('canvasMode') || 'false');
+    // const isCanvasMode = JSON.parse() || false;
+    // const sessionSettings = storedSettings[chat.id] || {};
+    // const  = sessionSettings.canvasMode || false;
+    try {
+      // Save user message to Supabase with current canvasMode value
+      const { error: userMessageError } = await supabase
+        .from('messages')
+        .insert([{
+          role: 'user',
           content: emptyTextAreaValue,
-          timestamp: getFormattedTime(),
-          canvasMode: editorVisible, // Set canvasMode based on editor visibility
-        },
-        {
-          id: (newId + 2).toString(),
-          sender: {
-            name: "Session 1",
-            username: new Date().toLocaleString(),
-            avatar: "/static/images/avatar/3.jpg",
-            online: true,
-          },
-          content: "",
-          timestamp: getFormattedTime(),
-        },
-      ];
+          session_id: chat.id,
+          interface: 1,
+          canvas_mode: canvasMode,  // use current canvasMode state
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }]);
 
-      setftChatMessages(initialMessages);
-
-      // Save user message to database
-      try {
-        const { error: userMessageError } = await supabase
-          .from('messages')
-          .insert([
-            {
-              role: 'user',
-              content: emptyTextAreaValue,
-              session_id: chat.id,
-              interface: 1, // Writer interface
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            }
-          ]);
-
-        if (userMessageError) {
-          console.error('Error saving user message:', userMessageError);
-        }
-      } catch (error) {
-        console.error('Error saving user message:', error);
+      if (userMessageError) {
+        console.error('Error saving user message:', userMessageError);
       }
 
-      handleNewFTMessage({
-        id: (newId + 1).toString(),
+      // Add user message to state immediately
+      const newMessage: MessageProps = {
+        id: Date.now().toString(),
         sender: "You" as const,
         content: emptyTextAreaValue,
-        timestamp: getFormattedTime(),
-      });
+        timestamp: new Date().toLocaleTimeString('en-US', {
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true
+        })
+      };
+      setftChatMessages(prev => [...prev, newMessage]);
 
-      const messages: ChatMessage[] = [];
+      // Get the correct prompt for the selected writer model
+      let systemPrompt = writerPrompts[settings.writerModel] || settings.writerPrompts[settings.writerModel] || '';
       
-      // Get system message from settings for the current model
-      const canvasMode:boolean = JSON.parse(localStorage.getItem('canvasMode') || 'false');
-      let system = settings.writerPrompts[getModelDisplayName(settings.writerModel)] || '';
-
+      // Append canvas mode prompt if canvas mode is on
       if (canvasMode) {
-        // Get canvas mode prompt from localStorage or use default
-        const canvasModePrompt = localStorage.getItem('canvasModePrompt') || VITE_CANVAS_MODE_PROMPT;
-        system = `${system}\n\n${canvasModePrompt}`;
+        systemPrompt = `${systemPrompt}\n\n${settings.canvasModePrompt}`;
       }
       
+      const messages: ChatMessage[] = [];
+      messages.push({ role: "system", content: systemPrompt });
       
-      // Add all previous messages to the context
       ftChatMessages.forEach(msg => {
         if (msg.sender === "You") {
-          let content = msg.content;
-          messages.push({ role: "user", content: content });
+          messages.push({ role: "user", content: msg.content });
         } else if (msg.sender !== "System" && typeof msg.sender !== "string") {
           messages.push({ role: "assistant", content: msg.content });
         }
       });
-
-      // Add current user message
+      
       let currentMessage = emptyTextAreaValue;
       if (canvasMode) {
         currentMessage = `User Message: 
@@ -616,83 +554,74 @@ export default function MessagesPane(props: MessagesPaneProps) {
       }
       messages.push({ role: "user", content: currentMessage });
 
-      // Get the token for the selected model
       const modelToken = settings.modelTokens[settings.writerModel] || import.meta.env.VITE_OPEN_AI_KEY;
       const response = await createChatCompletion(settings.writerModel, messages, modelToken);
 
-      let fullMessage = ""; // Store the full AI response
+      let fullMessage = "";
+      const assistantMessage = {
+        id: (ftChatMessages.length + 2).toString(),
+        sender: {
+          name: "Assistant",
+          username: new Date().toLocaleString(),
+          avatar: "/static/images/avatar/1.jpg",
+          online: true
+        },
+        content: "",
+        timestamp: new Date().toLocaleTimeString('en-US', {
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true
+        }),
+        canvas_mode: canvasMode
+      };
+
+      // Add initial empty assistant message
+      setftChatMessages(prev => [...prev, assistantMessage]);
 
       for await (const chunk of response) {
-        if (chunk.choices[0]?.delta?.content) {
-          fullMessage += chunk.choices[0].delta.content;
-          setftChatMessages((prevMessages) => {
-            const updatedMessages = [...prevMessages];
-            const lastMessage = updatedMessages[updatedMessages.length - 1];
-            if (lastMessage && typeof lastMessage.sender !== "string") {
-              lastMessage.content = fullMessage;
-            }
-            return updatedMessages;
-          });
+        if (abortControllerRefFT.current?.signal.aborted) {
+          break;
         }
+        fullMessage += chunk.choices[0].delta.content || '';
+        // Update the last message with new content
+        setftChatMessages(prev => {
+          const newMessages = [...prev];
+          newMessages[newMessages.length - 1] = {
+            ...newMessages[newMessages.length - 1],
+            content: fullMessage
+          };
+          return newMessages;
+        });
       }
-
-      // Save assistant message to database
-      try {
-        const { error: assistantMessageError } = await supabase
-          .from('messages')
-          .insert([
-            {
-              role: 'assistant',
-              content: fullMessage,
-              session_id: chat.id,
-              interface: 1, // Writer interface
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            }
-          ]);
-
-        if (assistantMessageError) {
-          console.error('Error saving assistant message:', assistantMessageError);
-        }
-      } catch (error) {
-        console.error('Error saving assistant message:', error);
-      }
-
-      // Save the final state of messages after completion
-      setftChatMessages((prevMessages) => {
-        const finalMessages = [...prevMessages];
-        const lastMessage = finalMessages[finalMessages.length - 1];
-        if (lastMessage && typeof lastMessage.sender !== "string") {
-          lastMessage.content = fullMessage;
-          lastMessage.canvasMode = canvasMode; // Ensure canvasMode is set
-        }
-        handleNewFTMessage(lastMessage);
-        return finalMessages;
-      });
-      // Set the editor content to the full message
+      setEmptyTextAreaValue("");
       setEditorContent(fullMessage);
-      setEmptyTextAreaValue(""); // Clear write textarea
-      handleAbortRequestFT();
-      setIsLoading(false);
-    } catch (error: unknown) {
-      if (error instanceof Error && error.message === "Request was aborted.") {
-        console.warn("Request was aborted by the user.");
-        return;
-      }
+      // Save assistant message to Supabase with current canvasMode value
+      const { error: assistantMessageError } = await supabase
+        .from('messages')
+        .insert([{
+          role: 'assistant',
+          content: fullMessage,
+          session_id: chat.id,
+          interface: 1,
+          canvas_mode: canvasMode,  // use current canvasMode state
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }]);
 
-      logError(error);
+      if (assistantMessageError) {
+        console.error('Error saving assistant message:', assistantMessageError);
+      }
+    } catch (error) {
+      console.error('Error in completion:', error);
+    } finally {
       setIsLoading(false);
-      handleAbortRequestFT();
-      alert("Ooooops! Something went wrong !");
+      abortControllerRefFT.current = null;
     }
   };
 
-  // Function to handle opening editor with content
   const handleOpenEditor = (content: string) => {
-    // If no specific content is provided, try to get the last message's content
     if (!content && ftChatMessages.length > 0) {
       const lastMessage = ftChatMessages[ftChatMessages.length - 1];
-      // Only use content if the message is not from "You"
       if (lastMessage.sender !== "You") {
         content = lastMessage.content;
       }
@@ -700,13 +629,10 @@ export default function MessagesPane(props: MessagesPaneProps) {
     
     setEditorContent(content);
     setEditorVisible(true);
-    // Collapse both panels when editor opens
     setResearchCollapsed(true);
-    // setWriterCollapsed(true);
   };
 
-  // Effect to expand collapsed panels when editor is closed
-  React.useEffect(() => {
+  useEffect(() => {
     if (!editorVisible) {
       setResearchCollapsed(false);
       setWriterCollapsed(false);
@@ -718,19 +644,18 @@ export default function MessagesPane(props: MessagesPaneProps) {
     <Box sx={{ 
       display: "flex", 
       gap: 1,
-      height: '95vh', // Fill entire viewport height
-      overflow: 'hidden' // Prevent outer scrolling
+      height: '95vh',
+      overflow: 'hidden'
     }}>
-      {/* First Chat Box (Research) */}
       <Sheet
         sx={{
           height: "100%",
           display: "flex",
           flexDirection: "column",
           backgroundColor: "background.level1",
-          width: researchCollapsed ? "60px" : (editorVisible ? "550px" : "50%"), // Take 50% width when editor is hidden
-          overflow: 'hidden', // Prevent sheet from scrolling
-          transition: 'width 0.3s ease', // Add smooth transition
+          width: researchCollapsed ? "60px" : (editorVisible ? "550px" : "50%"),
+          overflow: 'hidden',
+          transition: 'width 0.3s ease',
           position: 'relative',
         }}
       >
@@ -751,7 +676,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
             spacing={{ xs: 1, md: 2 }}
             sx={{ 
               alignItems: "center",
-              ml: researchCollapsed ? 0 : 0 // Add negative margin when collapsed
+              ml: researchCollapsed ? 0 : 0
             }}
           >
             <div>
@@ -765,7 +690,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
                     Research
                   </Typography>
                   <Typography level="body-sm" color="neutral">
-                    {getModelDisplayName(settings.researchModel)}
+                    {getModelDisplayName(researchModel || settings.researchModel)}
                   </Typography>
                 </>
               ) : (
@@ -776,7 +701,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
                     color: 'primary.main',
                     letterSpacing: '1px',
                     padding: '5px',
-                    ml: -2, // Move text more to the left
+                    ml: -2,
                   }}
                 >
                   R
@@ -793,7 +718,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
                 borderRadius: '50%',
                 width: '30px',
                 height: '30px',
-                mr: researchCollapsed ? -1 : 0, // Adjust margin when collapsed
+                mr: researchCollapsed ? -1 : 0,
                 '&:hover': {
                   backgroundColor: 'primary.100'
                 }
@@ -813,7 +738,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
                 minHeight: 0,
                 px: 2,
                 py: 3,
-                overflowY: "auto", // Changed from scroll to auto
+                overflowY: "auto",
                 flexDirection: "column-reverse",
               }}
             >
@@ -889,18 +814,17 @@ export default function MessagesPane(props: MessagesPaneProps) {
                 })}
               </Stack>
             </Box>
-            {/* Conditionally render Stop button or MessageInput */}
             {abortControllerRef.current &&
             !abortControllerRef.current.signal.aborted ? (
               <Button
                 size="sm"
                 color="danger"
-                sx={{ alignSelf: "center", borderRadius: "sm", mb: 2 }} // Add margin bottom (mb)
+                sx={{ alignSelf: "center", borderRadius: "sm", mb: 2 }}
                 endDecorator={<StopIcon />}
                 onClick={handleAbortRequest}
               >
                 Stop
-              </Button> // Show Stop button if abortController exists
+              </Button>
             ) : (
               <MessageInput
                 textAreaValue={textAreaValue}
@@ -914,16 +838,15 @@ export default function MessagesPane(props: MessagesPaneProps) {
         )}
       </Sheet>
 
-      {/* Second Chat Box (Write) */}
       <Sheet
         sx={{
           height: "100%",
           display: "flex",
           flexDirection: "column",
           backgroundColor: "background.level1",
-          width: writerCollapsed ? "120px" : (editorVisible ? "550px" : "50%"), // Take 50% width when editor is hidden
-          overflow: 'hidden', // Prevent sheet from scrolling
-          transition: 'width 0.3s ease', // Add smooth transition
+          width: writerCollapsed ? "120px" : (editorVisible ? "550px" : "50%"),
+          overflow: 'hidden',
+          transition: 'width 0.3s ease',
           position: 'relative',
         }}
       >
@@ -944,7 +867,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
             spacing={{ xs: 1, md: 2 }}
             sx={{ 
               alignItems: "center",
-              ml: writerCollapsed ? 0 : 0 // Add negative margin when collapsed
+              ml: writerCollapsed ? 0 : 0
             }}
           >
             <div>
@@ -958,7 +881,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
                     Write
                   </Typography>
                   <Typography level="body-sm" color="neutral">
-                    {getModelDisplayName(settings.writerModel)}
+                    {getModelDisplayName(writerModel || settings.writerModel)}
                   </Typography>
                 </>
               ) : (
@@ -969,7 +892,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
                     color: 'primary.main',
                     letterSpacing: '1px',
                     padding: '5px',
-                    ml: -2, // Move text more to the left
+                    ml: -2,
                   }}
                 >
                   W
@@ -1006,7 +929,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
                 borderRadius: '50%',
                 width: '30px',
                 height: '30px',
-                mr: writerCollapsed ? -1 : 0, // Adjust margin when collapsed
+                mr: writerCollapsed ? -1 : 0,
                 '&:hover': {
                   backgroundColor: 'primary.100'
                 }
@@ -1026,7 +949,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
                 minHeight: 0,
                 px: 2,
                 py: 3,
-                overflowY: "auto", // Changed from scroll to auto
+                overflowY: "auto",
                 flexDirection: "column-reverse",
                 position: "relative",
               }}
@@ -1072,18 +995,17 @@ export default function MessagesPane(props: MessagesPaneProps) {
               </Stack>
             </Box>
 
-            {/* Message input always stays at the bottom */}
             {abortControllerRefFT.current &&
             !abortControllerRefFT.current.signal.aborted ? (
               <Button
                 size="sm"
                 color="danger"
-                sx={{ alignSelf: "center", borderRadius: "sm", mb: 2 }} // Add margin bottom (mb)
+                sx={{ alignSelf: "center", borderRadius: "sm", mb: 2 }}
                 endDecorator={<StopIcon />}
                 onClick={handleAbortRequestFT}
               >
                 Stop
-              </Button> // Show Stop button if abortController exists
+              </Button>
             ) : (
               <MessageInput
                 textAreaValue={emptyTextAreaValue}
@@ -1097,7 +1019,6 @@ export default function MessagesPane(props: MessagesPaneProps) {
         )}
       </Sheet>
 
-      {/* Editor component taking most of the space */}
       {editorVisible && (
         <Sheet
           sx={{
@@ -1108,8 +1029,8 @@ export default function MessagesPane(props: MessagesPaneProps) {
             flex: 1,
             overflow: 'hidden',
             mt: 1,
-            width: writerCollapsed ? '70%' : '50%', // Adjust width based on writer collapse state
-            transition: 'width 0.3s ease', // Add smooth transition
+            width: writerCollapsed ? '70%' : '50%',
+            transition: 'width 0.3s ease',
           }}
         >
           <Box sx={{ flex: 1, overflow: 'auto' }}>
