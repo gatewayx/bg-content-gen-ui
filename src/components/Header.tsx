@@ -48,6 +48,8 @@ export default function Header() {
   const [modelOptions, setModelOptions] = React.useState<ModelOption[]>(MODEL_OPTIONS);
   const [isLoadingModels, setIsLoadingModels] = React.useState(false);
   const [settings, setSettings] = React.useState<Settings | null>(null);
+  const profileOpen = Boolean(anchorEl);
+  
 
   // Function to get current chat ID
   const getCurrentChatId = () => {
@@ -68,10 +70,31 @@ export default function Header() {
     return currentChatId;
   };
 
+
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (anchorEl && !(event.target as HTMLElement).closest('.MuiPopover-root')) {
+        setTimeout(() => {
+          setAnchorEl(null);
+        }, 1500);
+      }
+    };
+  
+    // Only add the listener if the menu is open
+    if (anchorEl) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [anchorEl]);
   // Initialize state from settings service
   React.useEffect(() => {
     const loadSettings = async () => {
       try {
+
+
+
         const currentChatId = getCurrentChatId();
         const loadedSettings = await getSettings(currentChatId);
         console.log('loadedSettings', loadedSettings);
@@ -341,6 +364,10 @@ export default function Header() {
     setAnchorEl(null);
   };
 
+  const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
   const handleLogout = async () => {
     try {
       await signOut();
@@ -437,6 +464,9 @@ export default function Header() {
             color="neutral"
             size="sm"
             onClick={handleProfileClick}
+            aria-controls={open ? 'basic-menu' : undefined}
+        aria-haspopup="true"
+        aria-expanded={open ? 'true' : undefined}
             sx={{ color: 'white' }}
           >
             <PersonIcon />
@@ -444,7 +474,7 @@ export default function Header() {
 
           <Menu
             anchorEl={anchorEl}
-            open={Boolean(anchorEl)}
+            open={profileOpen}
             onClose={handleClose}
             placement="bottom-end"
           >
