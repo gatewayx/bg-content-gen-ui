@@ -100,7 +100,7 @@ export const FT_MODEL_NAMES = {
 
 // Helper function to get display name for a model
 export const getModelDisplayName = (modelId: string, userProvidedSuffix?: string): string => {
-  // console.log('I am in getModelDisplayName', modelId,userProvidedSuffix);
+
   if (modelId in FT_MODEL_NAMES) {
     return FT_MODEL_NAMES[modelId as keyof typeof FT_MODEL_NAMES];
   }
@@ -112,7 +112,7 @@ export const getModelDisplayName = (modelId: string, userProvidedSuffix?: string
   // If not provided, get it from the second-to-last part of the model ID
   const parts = modelId?.split(':');
   const suffix = userProvidedSuffix || (parts.length >= 2 ? parts[parts.length - 2] : modelId);
-  // console.log('I am in getModelDisplayName', suffix);
+  
   return `${suffix}`;
 };
 

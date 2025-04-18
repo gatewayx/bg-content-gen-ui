@@ -299,7 +299,6 @@ export default function Header() {
     if (value === "divider") return;
 
     setWriterModel(value);
-    console.log('Setting Models', researchModel, writerModel);
     // Initialize with empty or default prompt for new model
     if (!writerPrompts[value]) {
       setWriterPrompts((prev) => ({
@@ -308,7 +307,7 @@ export default function Header() {
       }));
     }
   };
-  console.log('Setting Models', writerModel);
+  
   // Handle prompt changes
   const handleResearchPromptChange = (value: string) => {
     setResearchPrompts((prev) => ({

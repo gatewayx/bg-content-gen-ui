@@ -68,7 +68,6 @@ export default function MessagesPane(props: MessagesPaneProps) {
     researchModelProps
   } = props;
 
-  console.warn("Writer Model in Pane",props?.writerModelProps);
   
   const [chatMessages, setChatMessages] = useState<MessageProps[]>([]);
   const [ftChatMessages, setftChatMessages] = useState<MessageProps[]>([]);
@@ -90,15 +89,8 @@ export default function MessagesPane(props: MessagesPaneProps) {
 
   const sessionId = chat.id || 'default';
 
-  console.log('sessionId', sessionId);
-  
-  
-
   const [researchModel, setResearchModel] = useState<string>(props?.researchModelProps);
   const [writerModel, setWriterModel] = useState<string>(props?.writerModelProps);
-
-  console.log('researchModel', researchModel);
-  console.log('writerModel', writerModel);
 
   const convertToMessageProps = (messages: Array<{ id: number; role: string; content: string; created_at: string }>, isFT: boolean = false): MessageProps[] => {
     if (!messages || messages.length === 0) {
@@ -369,7 +361,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
         });
       }
 
-      console.log("Aborting", abortControllerRef);
+      
     } else {
       console.log("No abort controller to abort.");
     }

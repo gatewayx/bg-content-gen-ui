@@ -63,18 +63,16 @@ export const getSettings = async (sessionId: string): Promise<Settings> => {
   try {
     // Prevent concurrent fetches
     if (isFetching) {
-      // console.log('Settings fetch already in progress, returning cached settings');
       return settingsCache || DEFAULT_SETTINGS;
     }
 
     // Return cached settings if they exist and are not expired
     const now = Date.now();
     if (settingsCache && (now - lastFetchTime) < CACHE_DURATION) {
-      // console.log('Returning cached settings');
+      
       return settingsCache;
     }
-
-    // console.log('Fetching settings from database for session:', sessionId);
+    
     isFetching = true;
 
     // Start with default settings
@@ -163,8 +161,7 @@ export const getSettings = async (sessionId: string): Promise<Settings> => {
     const currentStoredSettings = JSON.parse(localStorage.getItem('settings') || '{}');
     currentStoredSettings[sessionId] = settings;
     localStorage.setItem('settings', JSON.stringify(currentStoredSettings));
-
-    // console.log('Settings fetched and cached successfully');
+    
     isFetching = false;
     return settings;
   } catch (error) {

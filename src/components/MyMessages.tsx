@@ -69,7 +69,7 @@ export default function MyMessages(props: { writerModel: string, researchModel: 
 
     loadSessions();
   }, []);
-  console.log('Setting Models', props?.writerModel);
+  
   const handleNewSession = async () => {
     try {
       // Create new session
