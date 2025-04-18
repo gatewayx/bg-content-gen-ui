@@ -19,7 +19,7 @@ function getFormattedTime() {
   return `${day} ${time}`;
 }
 
-export default function MyMessages() {
+export default function MyMessages(props: { writerModel: string, researchModel: string }) {
   const { settings } = useSettings();
   const { user } = useAuth();
   const [sessions, setSessions] = React.useState<ChatProps[]>([]);
@@ -69,7 +69,7 @@ export default function MyMessages() {
 
     loadSessions();
   }, []);
-
+  console.log('Setting Models', props?.writerModel);
   const handleNewSession = async () => {
     try {
       // Create new session
@@ -200,6 +200,7 @@ export default function MyMessages() {
   };
 
   return (
+    <>
     <Sheet
       sx={{
         flex: 1,
@@ -245,8 +246,11 @@ export default function MyMessages() {
           handleNewMessage={handleNewMessage}
           chat={selectedChat}
           handleNewFTMessage={handleNewFTMessage}
+          writerModelProps={props.writerModel}
+          researchModelProps={props.researchModel}
         />
       )}
     </Sheet>
+    </>
   );
 }

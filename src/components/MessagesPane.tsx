@@ -32,6 +32,8 @@ type MessagesPaneProps = {
   handleNewFTMessage: (message: MessageProps) => void;
   isLoading: boolean;
   setIsLoading: (loading: boolean) => void;
+  writerModelProps: string;
+  researchModelProps: string;
 };
 
 interface ChatMessage {
@@ -61,9 +63,13 @@ export default function MessagesPane(props: MessagesPaneProps) {
     chat,
     handleNewMessage,
     handleNewFTMessage,
-    setIsLoading,
+    setIsLoading, 
+    writerModelProps,
+    researchModelProps
   } = props;
 
+  console.warn("Writer Model in Pane",props?.writerModelProps);
+  
   const [chatMessages, setChatMessages] = useState<MessageProps[]>([]);
   const [ftChatMessages, setftChatMessages] = useState<MessageProps[]>([]);
   const [textAreaValue, setTextAreaValue] = useState("");
@@ -86,9 +92,13 @@ export default function MessagesPane(props: MessagesPaneProps) {
 
   console.log('sessionId', sessionId);
   
+  
 
-  const [researchModel, setResearchModel] = useState<string>('');
-  const [writerModel, setWriterModel] = useState<string>('');
+  const [researchModel, setResearchModel] = useState<string>(props?.researchModelProps);
+  const [writerModel, setWriterModel] = useState<string>(props?.writerModelProps);
+
+  console.log('researchModel', researchModel);
+  console.log('writerModel', writerModel);
 
   const convertToMessageProps = (messages: Array<{ id: number; role: string; content: string; created_at: string }>, isFT: boolean = false): MessageProps[] => {
     if (!messages || messages.length === 0) {
@@ -190,6 +200,11 @@ export default function MessagesPane(props: MessagesPaneProps) {
       return {};
     }
   };
+
+  useEffect(() => {
+    setWriterModel(props.writerModelProps);
+    setResearchModel(props.researchModelProps);
+  },[props.researchModelProps,props.writerModelProps,chat])
 
   useEffect(() => {
     const loadSessionMessages = async () => {
@@ -308,6 +323,13 @@ export default function MessagesPane(props: MessagesPaneProps) {
     if (chat.id) {
       loadSessionMessages();
     }
+
+    // const store = localStorage.getItem('settings');
+    // if (store) {
+    //   const settings = JSON.parse(store)[chat.id];
+    //   setResearchModel(settings.researchModel);
+    //   setWriterModel(settings.writerModel);
+    // }
   }, [chat.id]);
 
   useEffect(() => {
@@ -831,7 +853,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
                 setTextAreaValue={setTextAreaValue}
                 onSubmit={handleCompletion}
                 modelId={settings.researchModel}
-                modelName={getModelDisplayName(settings.researchModel)}
+                modelName={getModelDisplayName(researchModel || settings.researchModel)}
               />
             )}
           </>
@@ -1012,7 +1034,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
                 setTextAreaValue={setEmptyTextAreaValue}
                 onSubmit={handleCompletionFT}
                 modelId={settings.writerModel}
-                modelName={getModelDisplayName(settings.writerModel)}
+                modelName={getModelDisplayName( writerModel || settings.writerModel)}
               />
             )}
           </>

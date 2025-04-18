@@ -63,9 +63,7 @@ export default function JoyMessagesTemplate() {
                     <ProtectedRoute>
                       <Box sx={{ display: 'flex', minHeight: '100dvh' }}>
                         <Header />
-                        <Box component="main" className="MainContent" sx={{ flex: 1, marginTop: "40px" }}>
-                          <MyMessages />
-                        </Box>
+                        
                       </Box>
                     </ProtectedRoute>
                   }

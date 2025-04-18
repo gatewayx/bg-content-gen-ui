@@ -37,7 +37,7 @@ import Link from "@mui/joy/Link";
 import { useAuth } from "../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { ChatProps } from "../components/types";
-
+import MyMessages from "./MyMessages";
 type ModelValue = string;
 
 export default function Header() {
@@ -97,7 +97,7 @@ export default function Header() {
 
         const currentChatId = getCurrentChatId();
         const loadedSettings = await getSettings(currentChatId);
-        console.log('loadedSettings', loadedSettings);
+        
         setSettings(loadedSettings);
         // Set initial state values
         setResearchModel(loadedSettings.researchModel);
@@ -299,6 +299,7 @@ export default function Header() {
     if (value === "divider") return;
 
     setWriterModel(value);
+    console.log('Setting Models', researchModel, writerModel);
     // Initialize with empty or default prompt for new model
     if (!writerPrompts[value]) {
       setWriterPrompts((prev) => ({
@@ -307,7 +308,7 @@ export default function Header() {
       }));
     }
   };
-
+  console.log('Setting Models', writerModel);
   // Handle prompt changes
   const handleResearchPromptChange = (value: string) => {
     setResearchPrompts((prev) => ({
@@ -352,6 +353,7 @@ export default function Header() {
       researchPrompts,
       writerPrompts
     });
+   
     
     setOpen(false);
   };
@@ -653,6 +655,11 @@ export default function Header() {
           Update Settings
         </Button>
       </Drawer>
+
+   
+      <Box component="main" className="MainContent" sx={{ flex: 1, marginTop: "40px" }}>
+        <MyMessages writerModel={writerModel} researchModel={researchModel} />
+      </Box>
     </>
   );
 }
