@@ -51,6 +51,7 @@ export default function ChatListItem({
             onClick={() => {
               toggleMessagesPane();
               setSelectedChat({ id, sender, messages, messagesFT });
+              localStorage.setItem('selectedChatId', id);
             }}
             selected={selected}
             color="neutral"

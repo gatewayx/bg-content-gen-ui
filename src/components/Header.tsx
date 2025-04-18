@@ -123,11 +123,11 @@ export default function Header() {
   );
 
   // Ensure writer model is set on mount
-  React.useEffect(() => {
-    if (!writerModel) {
-      setWriterModel(DEFAULT_MODELS.WRITER);
-    }
-  }, [writerModel]);
+  // React.useEffect(() => {
+  //   if (!writerModel) {
+  //     setWriterModel(DEFAULT_MODELS.WRITER);
+  //   }
+  // }, [writerModel]);
 
   // Fetch fine-tuned models when drawer opens
   React.useEffect(() => {
@@ -226,6 +226,21 @@ export default function Header() {
               ...modelTokens,
             },
           });
+
+          // Set writerModel and researchModel from localStorage settings
+          const settingsFromStorage = localStorage.getItem('settings');
+          if (settingsFromStorage) {
+            try {
+              const parsedSettings = JSON.parse(settingsFromStorage);
+              const chatSettings = parsedSettings[currentChatId] || parsedSettings['default'];
+              if (chatSettings) {
+                setWriterModel(chatSettings.writerModel || DEFAULT_MODELS.WRITER);
+                setResearchModel(chatSettings.researchModel || DEFAULT_MODELS.RESEARCH);
+              }
+            } catch (error) {
+              console.error('Error parsing settings from localStorage:', error);
+            }
+          }
         } catch (error) {
           console.error("Error fetching models:", error);
         } finally {
@@ -329,6 +344,7 @@ export default function Header() {
   const handleLogout = async () => {
     try {
       await signOut();
+      localStorage.clear();
       navigate('/login');
     } catch (error) {
       console.error('Error signing out:', error);
