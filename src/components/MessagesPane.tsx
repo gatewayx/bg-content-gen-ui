@@ -392,6 +392,8 @@ export default function MessagesPane(props: MessagesPaneProps) {
     abortControllerRef.current = abortController;
 
     try {
+      const storedSettings = JSON.parse(localStorage.getItem('settings')||'[]');
+      const sessionSettings = storedSettings[chat.id] || storedSettings["default"];
       // Save user message to Supabase with canvasMode: false
       const { error: userMessageError } = await supabase
         .from('messages')
@@ -422,7 +424,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
       };
       setChatMessages(prev => [...prev, newMessage]);
 
-      const systemPrompt = researchPrompts[settings.researchModel] || settings.researchPrompts[settings.researchModel] || '';
+      const systemPrompt = sessionSettings.researchPrompts[sessionSettings.researchModel] || settings.researchPrompts[settings.researchModel] || '';
       const messages: ChatMessage[] = [];
       messages.push({ role: "system", content: systemPrompt });
       
@@ -435,7 +437,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
       });
       messages.push({ role: "user", content: textAreaValue });
 
-      const modelToken = settings.modelTokens[settings.researchModel] || import.meta.env.VITE_OPEN_AI_KEY;
+      const modelToken = sessionSettings.modelTokens[sessionSettings.researchModel] || import.meta.env.VITE_OPEN_AI_KEY;
       const response = await createChatCompletion(settings.researchModel, messages, modelToken);
 
       let fullMessage = "";
@@ -506,7 +508,8 @@ export default function MessagesPane(props: MessagesPaneProps) {
     abortControllerRefFT.current = abortController;
     const canvasMode = JSON.parse(localStorage.getItem('canvasMode') || 'false');
     // const isCanvasMode = JSON.parse() || false;
-    // const sessionSettings = storedSettings[chat.id] || {};
+    const storedSettings = JSON.parse(localStorage.getItem('settings')||'[]');
+    const sessionSettings = storedSettings[chat.id] || storedSettings["default"];
     // const  = sessionSettings.canvasMode || false;
     try {
       // Save user message to Supabase with current canvasMode value
@@ -540,7 +543,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
       setftChatMessages(prev => [...prev, newMessage]);
 
       // Get the correct prompt for the selected writer model
-      let systemPrompt = writerPrompts[settings.writerModel] || settings.writerPrompts[settings.writerModel] || '';
+      let systemPrompt = sessionSettings.writerPrompts[sessionSettings.writerModel] || settings.writerPrompts[settings.writerModel] || '';
       
       // Append canvas mode prompt if canvas mode is on
       if (canvasMode) {
@@ -568,8 +571,13 @@ export default function MessagesPane(props: MessagesPaneProps) {
       }
       messages.push({ role: "user", content: currentMessage });
 
-      const modelToken = settings.modelTokens[settings.writerModel] || import.meta.env.VITE_OPEN_AI_KEY;
-      const response = await createChatCompletion(settings.writerModel, messages, modelToken);
+      // console.log("Current Selected Model",settings.writerModel,props.writerModelProps);
+      // console.log("Session Settings ",sessionSettings.writerModel);
+      
+      
+
+      const modelToken = settings.modelTokens[sessionSettings.writerModel] || import.meta.env.VITE_OPEN_AI_KEY;
+      const response = await createChatCompletion(sessionSettings.writerModel, messages, modelToken);
 
       let fullMessage = "";
       const assistantMessage = {

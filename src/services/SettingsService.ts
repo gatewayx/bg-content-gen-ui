@@ -135,6 +135,8 @@ export const getSettings = async (sessionId: string): Promise<Settings> => {
       } catch (e) {
         console.error('Error parsing local storage settings:', e);
         isFetching = false;
+        
+        
         return DEFAULT_SETTINGS;
       }
     }

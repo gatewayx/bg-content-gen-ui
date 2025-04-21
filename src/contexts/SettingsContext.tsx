@@ -13,7 +13,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     canvasModePrompt: '',
     canvasMode: false,
     researchModel: 'o1',
-    writerModel: 'jessievoice',
+    writerModel: 'ft:gpt-4o-2024-08-06:gateway-x:jp-linkedin-top-30-likes-2025-03-10:B9jJFWXa',
     researchPrompts: {},
     writerPrompts: {},
     modelTokens: {}
