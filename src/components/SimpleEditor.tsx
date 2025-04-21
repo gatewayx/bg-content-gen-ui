@@ -17,7 +17,7 @@ import {
   InsertThematicBreak,
   ListsToggle,
 } from "@mdxeditor/editor";
-
+import '@mdxeditor/editor/style.css'
 interface SimpleEditorProps {
   initialContent?: string;
   onSave?: (content: string) => void;
