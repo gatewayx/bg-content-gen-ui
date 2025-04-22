@@ -34,7 +34,7 @@ import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import { fetchFineTunedModels } from "../services/OpenAIService";
 import CircularProgress from "@mui/joy/CircularProgress";
 import Link from "@mui/joy/Link";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { ChatProps } from "../components/types";
 import MyMessages from "./MyMessages";

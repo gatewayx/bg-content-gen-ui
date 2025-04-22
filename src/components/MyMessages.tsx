@@ -4,7 +4,7 @@ import MessagesPane from "./MessagesPane";
 import ChatsPane from "./ChatsPane";
 import { ChatProps, MessageProps } from "../components/types";
 import { useSettings } from "../contexts/SettingsContext";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../hooks/useAuth";
 import { createSession, getSessions, updateSession, deleteSession, sessionToChatProps } from "../services/SessionService";
 import { loadAllSessionSettings } from "../services/SettingsService";
 

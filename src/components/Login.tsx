@@ -6,7 +6,7 @@ import Typography from '@mui/joy/Typography';
 import Button from '@mui/joy/Button';
 import Link from '@mui/joy/Link';
 import Alert from '@mui/joy/Alert';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from "../hooks/useAuth";
 import { supabase } from '../lib/supabase';
 
 export default function Login() {
