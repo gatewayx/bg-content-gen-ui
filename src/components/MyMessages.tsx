@@ -7,6 +7,7 @@ import { useSettings } from "../contexts/SettingsContext";
 import { useAuth } from "../hooks/useAuth";
 import { createSession, getSessions, updateSession, deleteSession, sessionToChatProps } from "../services/SessionService";
 import { loadAllSessionSettings } from "../services/SettingsService";
+import { supabase } from "../lib/supabase";
 
 function getFormattedTime() {
   const now = new Date();
@@ -96,6 +97,7 @@ export default function MyMessages(props: { writerModel: string, researchModel: 
     } catch (error) {
       console.error('Error in handleNewSession:', error);
     }
+    
   };
 
   const handleDeleteSession = async (sessionId: string) => {

@@ -54,7 +54,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           name: session.user.user_metadata?.full_name,
           avatar: session.user.user_metadata?.avatar_url,
         }));
-      } else if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+      } else if (event === 'TOKEN_REFRESHED' && session) {
+        // Update the user with the refreshed session
+        setUser(session.user);
+      } else if (event === 'SIGNED_OUT') {
         setUser(null);
         localStorage.removeItem('user');
       }
