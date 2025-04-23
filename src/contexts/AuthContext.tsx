@@ -13,26 +13,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
-          // Check if token is expired
-          const expiresAt = session.expires_at;
-          if (expiresAt && expiresAt * 1000 < Date.now()) {
-            // Token is expired, redirect to login
-            window.location.href = '/login?error=expired_token';
-            return;
-          }
-
           setUser(session.user);
-          // Store user info in localStorage
           localStorage.setItem('user', JSON.stringify({
             email: session.user.email,
             name: session.user.user_metadata?.full_name,
             avatar: session.user.user_metadata?.avatar_url,
           }));
         } else {
-          // Check localStorage for existing user data
           const storedUser = localStorage.getItem('user');
           if (storedUser) {
-            localStorage.removeItem('user'); // Clear invalid data
+            localStorage.removeItem('user');
+            window.location.href = '/login';
           }
         }
       } catch (error) {
@@ -44,22 +35,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     initializeAuth();
 
-    // Listen for changes on auth state (sign in, sign out, etc.)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session) {
         setUser(session.user);
-        // Store user info in localStorage
         localStorage.setItem('user', JSON.stringify({
           email: session.user.email,
           name: session.user.user_metadata?.full_name,
           avatar: session.user.user_metadata?.avatar_url,
         }));
       } else if (event === 'TOKEN_REFRESHED' && session) {
-        // Update the user with the refreshed session
         setUser(session.user);
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
         localStorage.removeItem('user');
+        window.location.href = '/login';
       }
       setLoading(false);
     });
